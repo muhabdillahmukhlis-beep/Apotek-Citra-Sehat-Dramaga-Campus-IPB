@@ -7,25 +7,36 @@ use App\Http\Controllers\ObatController;
 use App\Http\Controllers\LaporanController;
 use App\Http\Controllers\StokController;
 use App\Http\Controllers\KadaluarsaController;
-use App\Http\Controllers\DashboardController; // <-- Tambahan Import
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Auth\ForgotPasswordController; // <-- DI SINI: Import Controller Baru
 
 // --- REDIRECT UTAMA ---
 Route::get('/', function () { 
     return redirect()->route('login'); 
 });
 
-// --- GUEST MIDDLEWARE ---
+// --- GUEST MIDDLEWARE (Hanya bisa diakses jika BELUM login) ---
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login']);
+
+    // --- DI SINI: Tambahan Rute Fitur Lupa Sandi ---
+    // Halaman untuk masukkan email
+    Route::get('/lupa-sandi', [ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
+    Route::post('/lupa-sandi', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
+
+    // Halaman untuk ganti password baru
+    Route::get('/reset-sandi/{token}', [ForgotPasswordController::class, 'showResetForm'])->name('password.reset');
+    Route::post('/reset-sandi', [ForgotPasswordController::class, 'resetPassword'])->name('password.update');
 });
 
+// --- LOGOUT ---
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-// --- AUTH MIDDLEWARE ---
+// --- AUTH MIDDLEWARE (Hanya bisa diakses jika SUDAH login) ---
 Route::middleware('auth')->group(function () {
     
-    // DASHBOARD (Sudah Diperbaiki)
+    // DASHBOARD
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // --- MODUL PENJUALAN ---
@@ -55,7 +66,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [StokController::class, 'index'])->name('index');
         Route::post('/update', [StokController::class, 'update'])->name('update');
     });
+    
     Route::get('/obat', [ObatController::class, 'index'])->name('obat.index');
+    
     // --- MODUL ANALITIK (LAPORAN) ---
     Route::prefix('laporan')->name('laporan.')->group(function () {
         Route::get('/', [LaporanController::class, 'index'])->name('index'); 
