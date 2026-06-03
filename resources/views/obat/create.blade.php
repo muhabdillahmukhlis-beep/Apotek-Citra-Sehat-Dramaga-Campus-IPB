@@ -15,11 +15,23 @@
     <div class="p-6">
         <form action="{{ route('obat.store') }}" method="POST" class="space-y-6 max-w-4xl mx-auto">
             @csrf
+            
+            @if(session('error') || $errors->any())
+            <div class="p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl font-bold text-sm space-y-1 shadow-sm">
+                @if(session('error'))
+                    <p class="flex items-center"><i class="fas fa-exclamation-circle mr-2 text-red-600"></i>{{ session('error') }}</p>
+                @endif
+                @foreach($errors->all() as $error)
+                    <p class="flex items-center"><i class="fas fa-exclamation-circle mr-2 text-red-500"></i>{{ $error }}</p>
+                @endforeach
+            </div>
+            @endif
+
             <div class="bg-white p-8 rounded-[28px] border border-[#D4E8D4] space-y-6 shadow-sm">
                 
                 <div>
                     <label class="block text-[10px] font-bold text-[#7A8C7A] uppercase mb-2 ml-1">Nama Produk</label>
-                    <input type="text" name="nama" required 
+                    <input type="text" name="nama" value="{{ old('nama') }}" required 
                            class="w-full h-14 px-5 bg-[#F9FBF9] border border-[#D4E8D4] rounded-2xl focus:border-[#2E7D32] outline-none text-sm font-bold text-[#1A2E1A] transition-all" 
                            placeholder="Masukkan nama lengkap obat...">
                 </div>
@@ -31,7 +43,7 @@
                                 class="w-full h-14 px-5 bg-[#F9FBF9] border border-[#D4E8D4] rounded-2xl focus:border-[#2E7D32] outline-none text-sm font-bold text-[#1A2E1A] appearance-none bg-white transition-all">
                             <option value="">-- Pilih Kategori --</option>
                             @foreach($categories as $cat)
-                                <option value="{{ $cat->id }}">{{ $cat->nama }}</option>
+                                <option value="{{ $cat->id }}" {{ old('id_kategori') == $cat->id ? 'selected' : '' }}>{{ $cat->nama }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -39,11 +51,9 @@
                         <label class="block text-[10px] font-bold text-[#7A8C7A] uppercase mb-2 ml-1">Satuan</label>
                         <select name="satuan" required 
                                 class="w-full h-14 px-5 bg-[#F9FBF9] border border-[#D4E8D4] rounded-2xl focus:border-[#2E7D32] outline-none text-sm font-bold text-[#1A2E1A] appearance-none bg-white transition-all">
-                            <option value="Strip">Strip</option>
-                            <option value="Botol">Botol</option>
-                            <option value="Box">Box</option>
-                            <option value="Pcs">Pcs</option>
-                            <option value="Tablet">Tablet</option>
+                            @foreach(['Strip', 'Botol', 'Box', 'Pcs', 'Tablet'] as $satuanOption)
+                                <option value="{{ $satuanOption }}" {{ old('satuan') == $satuanOption ? 'selected' : '' }}>{{ $satuanOption }}</option>
+                            @endforeach
                         </select>
                     </div>
                 </div>
@@ -51,13 +61,14 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="block text-[10px] font-bold text-[#7A8C7A] uppercase mb-2 ml-1">Stok</label>
-                        <input type="number" name="stok" required 
+                        <input type="number" name="stok" min="1" value="{{ old('stok', 1) }}" required 
                                class="w-full h-14 px-5 bg-[#F9FBF9] border border-[#D4E8D4] rounded-2xl focus:border-[#2E7D32] outline-none text-sm font-bold text-[#2E7D32] transition-all" 
-                               placeholder="0">
+                               placeholder="0"
+                               oninput="if(this.value < 1) this.value = 1;">
                     </div>
                     <div>
                         <label class="block text-[10px] font-bold text-[#7A8C7A] uppercase mb-2 ml-1">Kadaluarsa</label>
-                        <input type="date" name="tgl_kadaluarsa" required 
+                        <input type="date" name="tgl_kadaluarsa" value="{{ old('tgl_kadaluarsa') }}" required 
                                class="w-full h-14 px-5 bg-[#F9FBF9] border border-[#D4E8D4] rounded-2xl focus:border-[#2E7D32] outline-none text-sm font-bold text-[#1A2E1A] transition-all">
                     </div>
                 </div>
@@ -67,25 +78,28 @@
                         <label class="block text-[10px] font-bold text-[#7A8C7A] uppercase mb-2 ml-1">Harga Beli</label>
                         <div class="relative">
                             <span class="absolute left-5 top-1/2 -translate-y-1/2 text-sm font-bold text-[#7A8C7A]">Rp</span>
-                            <input type="number" name="harga_beli" required 
+                            <input type="number" name="harga_beli" min="0" value="{{ old('harga_beli', 0) }}" required 
                                    class="w-full h-14 pl-12 pr-5 bg-[#F9FBF9] border border-[#D4E8D4] rounded-2xl focus:border-[#2E7D32] outline-none text-sm font-bold text-[#1A2E1A] transition-all" 
-                                   placeholder="0">
+                                   placeholder="0"
+                                   oninput="if(this.value < 0) this.value = 0;">
                         </div>
                     </div>
+                    
                     <div>
                         <label class="block text-[10px] font-bold text-[#7A8C7A] uppercase mb-2 ml-1">Harga Jual</label>
                         <div class="relative">
                             <span class="absolute left-5 top-1/2 -translate-y-1/2 text-sm font-bold text-[#2E7D32]">Rp</span>
-                            <input type="number" name="harga_jual" required 
+                            <input type="number" name="harga_jual" min="0" value="{{ old('harga_jual', 0) }}" required 
                                    class="w-full h-14 pl-12 pr-5 bg-[#F9FBF9] border border-[#D4E8D4] rounded-2xl focus:border-[#2E7D32] outline-none text-sm font-black text-[#2E7D32] transition-all" 
-                                   placeholder="0">
+                                   placeholder="0"
+                                   oninput="if(this.value < 0) this.value = 0;">
                         </div>
                     </div>
                 </div>
 
                 <div class="pt-4 border-t border-[#F0F4F0]">
                     <label class="block text-[10px] font-bold text-[#7A8C7A] uppercase mb-2 ml-1">Kode Obat (Internal)</label>
-                    <input type="text" name="kode_obat" required 
+                    <input type="text" name="kode_obat" value="{{ old('kode_obat') }}" required 
                            class="w-full h-12 px-5 bg-white border border-[#D4E8D4] rounded-xl focus:border-[#2E7D32] outline-none text-xs font-mono font-bold text-[#7A8C7A] transition-all" 
                            placeholder="Contoh: OBT-001">
                 </div>

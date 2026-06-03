@@ -41,6 +41,12 @@
             </div>
         @endif
 
+        @if($errors->has('jumlah_tambah'))
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-2xl text-xs font-bold mb-4">
+                <i class="fas fa-exclamation-circle mr-1"></i> {{ $errors->first('jumlah_tambah') }}
+            </div>
+        @endif
+
         <div class="flex flex-wrap gap-3">
             <div class="relative flex-1 min-w-[300px]">
                 <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-[#7A8C7A] text-xs"></i>
@@ -88,7 +94,6 @@
                                 $status_color = 'bg-green-100 text-green-600 border-green-200';
                             }
 
-                            // Pastikan tanggal diparsing dengan Carbon agar tidak error
                             $tgl_kadaluarsa = $item->tgl_kadaluarsa ? \Carbon\Carbon::parse($item->tgl_kadaluarsa) : null;
                         @endphp
                         <span class="text-[9px] font-black border {{ $status_color }} px-2 py-1 rounded-full tracking-tighter">{{ $status_label }}</span>
@@ -122,6 +127,12 @@
                         </div>
                     </div>
 
+                    <div class="flex gap-2 mb-2">
+                        <button type="button" onclick="openTambahStokModal('{{ $item->id }}', '{{ $item->nama }}')" class="w-full h-10 bg-green-50 text-green-700 rounded-xl flex items-center justify-center gap-2 text-xs font-bold hover:bg-green-100 active:scale-95 transition-all">
+                            <i class="fas fa-plus-circle"></i> Tambah Stok
+                        </button>
+                    </div>
+
                     <div class="flex gap-2">
                         <a href="{{ route('obat.edit', $item->id) }}" class="flex-1 h-11 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center gap-2 text-xs font-bold active:scale-95 transition-all">
                             <i class="fas fa-edit"></i> Edit
@@ -143,6 +154,44 @@
             </div>
             @endforelse
         </div>
+    </div>
+</div>
+
+<div id="tambahStokModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+    <div class="bg-white rounded-[28px] w-full max-w-md p-6 shadow-2xl border border-[#D4E8D4] transform scale-95 transition-transform duration-300">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="font-sora font-extrabold text-[#1A2E1A] text-base">Form Tambah Stok</h3>
+            <button type="button" onclick="closeTambahStokModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        
+        <form id="tambahStokForm" method="POST" action="">
+            @csrf
+            @method('PUT')
+            
+            <div class="mb-4">
+                <label class="block text-[11px] font-bold text-[#7A8C7A] uppercase mb-2">Nama Obat</label>
+                <input type="text" id="modalNamaObat" class="w-full h-11 px-4 bg-gray-100 border border-[#D4E8D4] rounded-2xl text-xs font-bold text-gray-500 outline-none" readonly>
+            </div>
+
+            <div class="mb-6">
+                <label for="jumlah_tambah" class="block text-[11px] font-bold text-[#7A8C7A] uppercase mb-2">Jumlah Penambahan Stok</label>
+                <input type="number" 
+                       name="jumlah_tambah" 
+                       id="jumlah_tambah" 
+                       min="1" 
+                       placeholder="Contoh: 10, 50, 100" 
+                       class="w-full h-11 px-4 bg-white border border-[#D4E8D4] rounded-2xl text-xs font-bold text-[#1A2E1A] focus:border-[#2E7D32] outline-none shadow-sm" 
+                       required>
+                <small class="text-[10px] text-red-500 font-bold mt-1 block">Minimal penambahan harus di atas angka 0 (tidak boleh minus).</small>
+            </div>
+
+            <div class="flex gap-3">
+                <button type="button" onclick="closeTambahStokModal()" class="flex-1 h-11 bg-gray-100 text-gray-600 rounded-2xl text-xs font-bold active:scale-95 transition-all">Batal</button>
+                <button type="submit" class="flex-1 h-11 bg-[#2E7D32] text-white rounded-2xl text-xs font-bold shadow-lg shadow-green-900/10 active:scale-95 transition-all">Simpan Stok</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -169,5 +218,31 @@
             applyFilters();
         }
     });
+
+    // JAVASCRIPT LOGIC UNTUK INTERAKSI MODAL AMAN
+    const modal = document.getElementById('tambahStokModal');
+    const modalContent = modal.querySelector('div');
+
+    function openTambahStokModal(id, nama) {
+        // Atur URL action form dinamis berdasarkan ID obat yang dipilih
+        // Ganti 'obat' di bawah sesuai dengan nama route resource update Anda di web.php
+        document.getElementById('tambahStokForm').action = `/obat/${id}/tambah-stok`; 
+        document.getElementById('modalNamaObat').value = nama;
+        document.getElementById('jumlah_tambah').value = '';
+
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modalContent.classList.remove('scale-95');
+        }, 10);
+    }
+
+    function closeTambahStokModal() {
+        modal.classList.add('opacity-0');
+        modalContent.classList.add('scale-95');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 300);
+    }
 </script>
 @endsection

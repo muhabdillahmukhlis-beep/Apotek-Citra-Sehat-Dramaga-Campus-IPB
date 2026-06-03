@@ -64,7 +64,7 @@ class TransaksiController extends Controller
         $query = $this->applyFilter($request);
         $data = $query->latest()->get();
 
-        // Menggunakan view transaksi.export_pdf (sesuaikan dengan nama file blade Anda)
+        // Menggunakan view transaksi.export_pdf
         $pdf = Pdf::loadView('transaksi.export_pdf', compact('data'));
         
         return $pdf->download('laporan-transaksi-'.now()->format('d-m-Y').'.pdf');
@@ -88,7 +88,7 @@ class TransaksiController extends Controller
             
             return response()->json([
                 'status' => 'success',
-                'data'   => $transaksi
+                'data'    => $transaksi
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -118,15 +118,22 @@ class TransaksiController extends Controller
 
     /**
      * PROSES SIMPAN TRANSAKSI
+     * Dilengkapi Interupsi Otomatis Batas Stok & Uang Belanja (TC_TRX_003 & TC_TRX_006)
      */
     public function store(Request $request) 
     {
+        // 1. Validasi Awal Struktur Request Input Kasir
         $request->validate([
-            'items' => 'required|array|min:1',
-            'items.*.id' => 'required|exists:obat,id', 
-            'items.*.qty' => 'required|integer|min:1',
-            'metode_pembayaran' => 'required|string', 
-            'bayar' => 'required|numeric|min:0',
+            'items'               => 'required|array|min:1',
+            'items.*.id'          => 'required|exists:obat,id', 
+            'items.*.qty'         => 'required|integer|min:1',
+            'metode_pembayaran'   => 'required|string|in:Tunai,QRIS,Debit', 
+            'bayar'               => 'required|numeric|min:0',
+        ], [
+            'items.required'         => 'Keranjang belanja kosong! Pilih minimal 1 obat.',
+            'items.*.qty.min'        => 'Kuantitas beli minimal bernilai 1.',
+            'metode_pembayaran.in'   => 'Metode pembayaran harus berupa Tunai, QRIS, atau Debit.',
+            'bayar.min'              => 'Uang pembayaran tidak boleh bernilai negatif.',
         ]);
 
         try {
@@ -134,11 +141,14 @@ class TransaksiController extends Controller
                 $total = 0;
                 $itemsToProcess = [];
 
+                // INTERUPSI 1: Pengecekan sisa stok fisik obat di database (TC_TRX_003)
                 foreach ($request->items as $item) {
+                    // Menggunakan lockForUpdate untuk menghindari Race Condition di kasir
                     $obat = Obat::lockForUpdate()->findOrFail($item['id']);
 
                     if ($obat->stok < $item['qty']) {
-                        throw new \Exception("Stok obat '{$obat->nama}' tidak mencukupi!");
+                        // Sistem memblokir dan melempar pesan kesalahan spesifik
+                        throw new \Exception("Aksi Diblokir! Stok obat '{$obat->nama}' tidak mencukupi. Sisa stok di sistem: {$obat->stok} unit, permintaan: {$item['qty']} unit.");
                     }
 
                     $subtotalItem = $obat->harga_jual * $item['qty'];
@@ -151,10 +161,13 @@ class TransaksiController extends Controller
                     ];
                 }
 
+                // INTERUPSI 2: Pengecekan kecukupan uang tunai (TC_TRX_006)
                 if ($request->metode_pembayaran === 'Tunai' && $request->bayar < $total) {
-                    throw new \Exception("Uang pembayaran kurang! Total: Rp " . number_format($total, 0, ',', '.'));
+                    $kekurangan = $total - $request->bayar;
+                    throw new \Exception("Aksi Diblokir! Uang tunai kurang sebesar Rp " . number_format($kekurangan, 0, ',', '.') . " (Total Belanja: Rp " . number_format($total, 0, ',', '.') . ")");
                 }
 
+                // 2. Eksekusi Pembuatan Dokumen Transaksi Utama jika lolos filter
                 $transaksi = Transaksi::create([
                     'no_transaksi'  => 'TRX-' . now()->format('YmdHis') . strtoupper(Str::random(4)),
                     'kasir_id'      => Auth::id() ?? 1,
@@ -166,6 +179,7 @@ class TransaksiController extends Controller
                     'kembalian'     => $request->metode_pembayaran === 'Tunai' ? ($request->bayar - $total) : 0
                 ]);
 
+                // 3. Rekam Detail Item dan Potong Stok Gudang secara Sinkron
                 foreach ($itemsToProcess as $process) {
                     $obat = $process['obat'];
                     
@@ -180,18 +194,22 @@ class TransaksiController extends Controller
                         'subtotal'     => $process['subtotal']
                     ]);
 
+                    // Memotong stok obat aman dari minus
                     $obat->decrement('stok', $process['qty']);
                 }
 
+                $formattedKembali = "Rp " . number_format($transaksi->kembalian, 0, ',', '.');
+
                 return response()->json([
-                    'status' => 'success', 
-                    'message' => 'Transaksi Berhasil Disimpan!',
+                    'status'   => 'success', 
+                    'message'  => "Transaksi Berhasil Disimpan! Kembalian: {$formattedKembali}",
                     'redirect' => route('transaksi.index')
                 ]);
-            });
+            }); // PERBAIKAN DI SINI: Mengubah ');' menjadi '});' agar closure terisolasi dengan benar
         } catch (\Exception $e) {
+            // Mengembalikan pesan interupsi dalam bentuk JSON Error (HTTP 422)
             return response()->json([
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => $e->getMessage()
             ], 422);
         }

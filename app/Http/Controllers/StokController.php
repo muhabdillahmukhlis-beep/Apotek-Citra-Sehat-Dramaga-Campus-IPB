@@ -45,13 +45,24 @@ class StokController extends Controller
      */
     public function update(Request $request)
     {
-        // Validasi input dengan pesan kustom jika perlu
+        // LENGKAP & INTEGRASI: Validasi pencegahan input nol, minus, atau kosong (TC_STOK_002)
         $request->validate([
             'obat_id' => 'required|exists:obat,id',
             'type'    => 'required|in:tambah,kurang',
-            'jumlah'  => 'required|integer|min:1',
+            'jumlah'  => 'required|integer|min:1', // Mengunci nilai minimal wajib 1 (memblokir 0 dan negatif)
             'alasan'  => 'required|string|max:255',
             'batch'   => 'nullable|string|max:50',
+        ], [
+            // Pesan kesalahan kustom Bahasa Indonesia untuk UI SweetAlert2 Anda
+            'obat_id.required' => 'Silahkan pilih item obat yang akan disesuaikan.',
+            'obat_id.exists'   => 'Obat yang dipilih tidak terdaftar di database.',
+            'type.required'    => 'Jenis penyesuaian (Tambah/Kurang) wajib ditentukan.',
+            'type.in'          => 'Jenis penyesuaian harus bernilai tambah atau kurang.',
+            'jumlah.required'  => 'Jumlah kuantitas stok wajib diisi.',
+            'jumlah.integer'   => 'Jumlah penyesuaian stok harus berupa bilangan bulat.',
+            'jumlah.min'       => 'Gagal! Kuantitas penyesuaian stok tidak boleh nol atau bernilai negatif (Minimal 1).',
+            'alasan.required'  => 'Alasan penyesuaian stok wajib diisi untuk catatan log internal.',
+            'alasan.max'       => 'Alasan terlalu panjang (maksimal 255 karakter).',
         ]);
 
         try {
@@ -65,9 +76,9 @@ class StokController extends Controller
             if ($request->type === 'tambah') {
                 $obat->stok += $jumlah;
             } else {
-                // Cek validasi stok sebelum dikurangi
+                // Cek validasi kecukupan stok sebelum dikurangi agar tidak menghasilkan nilai minus di DB
                 if ($obat->stok < $jumlah) {
-                    return back()->with('error', "Gagal! Stok {$obat->nama} saat ini hanya {$obat->stok}, tidak cukup untuk dikurangi {$jumlah}.");
+                    return back()->with('error', "Gagal! Stok obat {$obat->nama} saat ini hanya tersedia {$obat->stok} unit, tidak cukup jika dikurangi sebanyak {$jumlah} unit.");
                 }
                 $obat->stok -= $jumlah;
             }
@@ -75,8 +86,17 @@ class StokController extends Controller
             // Simpan perubahan ke tabel obat
             $obat->save();
 
-            /** * CATATAN: Sangat disarankan untuk menyimpan riwayat ini ke tabel 'stok_log' 
-             * agar Anda bisa melacak siapa yang mengubah stok dan alasannya.
+            /** * CATATAN OPERASIONAL: 
+             * Jika kelompok Anda memiliki tabel 'stok_log' atau 'riwayat_stok', 
+             * baris untuk insert data log audit bisa diletakkan di bawah sini:
+             * * DB::table('stok_log')->insert([
+             * 'obat_id' => $obat->id,
+             * 'user_id' => auth()->id(),
+             * 'tipe' => $request->type,
+             * 'jumlah' => $jumlah,
+             * 'alasan' => $request->alasan,
+             * 'created_at' => now()
+             * ]);
              */
             
             DB::commit();
@@ -84,7 +104,7 @@ class StokController extends Controller
 
         } catch (\Exception $e) {
             DB::rollback();
-            return back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan sistem internal: ' . $e->getMessage());
         }
     }
 }
