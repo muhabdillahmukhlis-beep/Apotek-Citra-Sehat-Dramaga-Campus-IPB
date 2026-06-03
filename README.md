@@ -42,5 +42,11 @@ Jika Anda ingin menjalankan proyek ini di komputer Anda, ikuti langkah-langkah b
     php artisan serve
     ```
 
+7. **Username & Password**
+    ```bash
+    Username : admin
+    password : admin1234
+    ```
+
 ---
 **Tujuan:** Proyek Semester 4 - IPB University
