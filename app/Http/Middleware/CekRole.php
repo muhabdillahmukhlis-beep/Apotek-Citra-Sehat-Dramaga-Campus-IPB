@@ -1,30 +1,5 @@
 <?php
 
-// ================================================================
-//  app/Http/Middleware/CekRole.php
-//
-//  Middleware ini memastikan user yang login memiliki role
-//  yang sesuai sebelum bisa mengakses suatu halaman.
-//
-//  CARA PAKAI DI ROUTES:
-//
-//  1. Satu role:
-//     Route::get('/pengguna', ...)->middleware('role:admin');
-//
-//  2. Beberapa role (salah satu boleh):
-//     Route::get('/laporan', ...)->middleware('role:admin,pemilik');
-//
-//  3. Di grup route:
-//     Route::middleware(['auth', 'role:kasir,admin'])->group(function () {
-//         Route::get('/transaksi/baru', ...);
-//     });
-//
-//  DAFTARKAN DI: bootstrap/app.php
-//  ->withMiddleware(function (Middleware $middleware) {
-//      $middleware->alias(['role' => CekRole::class]);
-//  })
-// ================================================================
-
 namespace App\Http\Middleware;
 
 use Closure;
@@ -34,15 +9,11 @@ use Symfony\Component\HttpFoundation\Response;
 class CekRole
 {
     /**
-     * Jalankan middleware.
-     *
-     * @param Request $request  — request yang masuk
-     * @param Closure $next     — lanjutkan ke handler berikutnya
-     * @param string  ...$roles — role yang diizinkan akses
+     * Jalankan middleware keamanan tingkatan Level (Role).
      */
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
-        // Pastikan user sudah login
+        // 1. Pastikan user sudah login
         if (!auth()->check()) {
             return redirect()
                 ->route('login')
@@ -51,34 +22,31 @@ class CekRole
 
         $user = auth()->user();
 
-        // Pastikan akun user aktif
-        if (!$user->is_aktif) {
-            auth()->logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-
-            return redirect()
-                ->route('login')
-                ->with('error', 'Akun Anda telah dinonaktifkan. Hubungi administrator.');
-        }
+        // 2. Normalisasi teks role (Ubah ke huruf kecil & buang spasi kosong)
+        // Mencegah error akibat perbedaan penulisan seperti 'Admin', 'ADMIN', atau 'admin '
+        $userRole = strtolower(trim($user->role));
+        $allowedRoles = array_map(function ($role) {
+            return strtolower(trim($role));
+        }, $roles);
 
         // Cek apakah role user ada di daftar role yang diizinkan
-        if (in_array($user->role, $roles)) {
-            return $next($request); // izinkan akses
+        if (in_array($userRole, $allowedRoles)) {
+            return $next($request); // Izinkan akses ke halaman
         }
 
-        // Role tidak cocok — tolak akses
-        // Jika request AJAX/API, kembalikan JSON
-        if ($request->expectsJson()) {
+        // 3. Role tidak cocok — Tolak akses
+        // Jika request berupa AJAX / API / Axios, kembalikan response JSON
+        if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
-                'pesan' => 'Anda tidak memiliki izin untuk mengakses fitur ini.',
-                'role'  => $user->role,
+                'status'  => 'error',
+                'pesan'   => 'Anda tidak memiliki izin untuk mengakses fitur ini.',
+                'current_role' => $user->role,
             ], 403);
         }
 
-        // Jika request biasa, redirect ke halaman yang sesuai role-nya
+        // Jika request halaman biasa, kembalikan ke dashboard dengan pesan error
         return redirect()
             ->route('dashboard')
-            ->with('error', "Akses ditolak. Fitur ini hanya untuk: " . implode(', ', $roles) . ".");
+            ->with('error', "Akses ditolak. Fitur ini hanya dapat diakses oleh: " . implode(', ', $roles) . ".");
     }
 }

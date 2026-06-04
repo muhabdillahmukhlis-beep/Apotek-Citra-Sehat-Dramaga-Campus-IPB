@@ -142,7 +142,7 @@
                     <tr class="text-xs hover:bg-gray-50/30 transition-colors">
                         <td class="px-6 py-4 font-bold text-gray-700">#{{ $trx->no_transaksi }}</td>
                         <td class="px-6 py-4 text-gray-500">{{ $trx->created_at->format('d/m/Y H:i') }}</td>
-                        <td class="px-6 py-4 text-gray-600">{{ $trx->kasir->name ?? 'Admin' }}</td>
+                        <td class="px-6 py-4 text-gray-600">{{ $trx->kasir->nama ?? $trx->kasir->name ?? 'Admin' }}</td>
                         <td class="px-6 py-4 font-black text-[#2E7D32]">Rp {{ number_format($trx->total, 0, ',', '.') }}</td>
                         <td class="px-6 py-4">
                             <span class="px-2 py-1 bg-green-50 text-green-600 rounded-md text-[9px] font-bold border border-green-100 uppercase">Selesai</span>
@@ -200,8 +200,11 @@
                                     <th class="px-4 py-2.5 text-right">Harga</th>
                                     <th class="px-4 py-2.5 text-right">Subtotal</th>
                                 </tr>
-                            </table>
-                        </div>
+                            </thead>
+                            {{-- 🔥 PERBAIKAN: Ditambahkan elemen tbody id="modalItemRows" di bawah ini agar data obat bisa disuntikkan oleh Javascript --}}
+                            <tbody id="modalItemRows" class="divide-y divide-[#D4E8D4]">
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
@@ -279,35 +282,50 @@
         fetch(`/transaksi/${id}`)
             .then(response => response.json())
             .then(res => {
-                if (res.status === 'success') {
-                    const tx = res.data;
+                if (res.status === 'success' || res.data) {
+                    // Toleransi jika struktur response langsung mengembalikan objek data atau bersarang di res.data
+                    const tx = res.data ? res.data : res;
                     const date = new Date(tx.created_at);
                     const tglFormatted = date.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
                     document.getElementById('modalNoTrx').innerText = `#${tx.no_transaksi}`;
                     document.getElementById('modalWaktu').innerText = tglFormatted;
-                    document.getElementById('modalKasir').innerText = tx.kasir ? (tx.kasir.nama || tx.kasir.username) : 'Administrator';
-                    document.getElementById('modalMetode').innerText = tx.metode_bayar;
+                    document.getElementById('modalKasir').innerText = tx.kasir ? (tx.kasir.nama || tx.kasir.name || tx.kasir.username) : 'Administrator';
+                    document.getElementById('modalMetode').innerText = tx.metode_bayar || tx.metode_pembayaran || '-';
 
                     let rowsHtml = '';
-                    tx.details.forEach(item => {
+                    // Atur toleransi jika nama relasi detail transaksi Anda bernama 'details' atau 'detail_transaksi'
+                    const detailsArr = tx.details || tx.detail_transaksi || [];
+                    
+                    detailsArr.forEach(item => {
+                        const namaObat = item.nama_obat || (item.obat ? item.obat.nama : 'Obat');
+                        const kodeObat = item.kode_obat || (item.obat ? item.obat.kode : '-');
+                        const satuanObat = item.satuan || (item.obat ? item.obat.satuan : 'Unit');
+                        const hargaSatuan = parseInt(item.harga_satuan || item.harga || 0);
+                        const subtotal = parseInt(item.subtotal || (hargaSatuan * item.jumlah) || 0);
+
                         rowsHtml += `
                             <tr class="hover:bg-gray-50/50">
                                 <td class="px-4 py-3">
-                                    <p class="font-bold text-gray-700">${item.nama_obat}</p>
-                                    <span class="text-[9px] font-mono bg-gray-100 text-gray-500 px-1 py-0.5 rounded">${item.kode_obat}</span>
+                                    <p class="font-bold text-gray-700">${namaObat}</p>
+                                    <span class="text-[9px] font-mono bg-gray-100 text-gray-500 px-1 py-0.5 rounded">${kodeObat}</span>
                                 </td>
-                                <td class="px-4 py-3 text-center text-gray-600 font-semibold">${item.jumlah} ${item.satuan}</td>
-                                <td class="px-4 py-3 text-right text-gray-500">Rp ${parseInt(item.harga_satuan).toLocaleString('id-ID')}</td>
-                                <td class="px-4 py-3 text-right font-bold text-gray-700">Rp ${parseInt(item.subtotal).toLocaleString('id-ID')}</td>
+                                <td class="px-4 py-3 text-center text-gray-600 font-semibold">${item.jumlah} ${satuanObat}</td>
+                                <td class="px-4 py-3 text-right text-gray-500">Rp ${hargaSatuan.toLocaleString('id-ID')}</td>
+                                <td class="px-4 py-3 text-right font-bold text-gray-700">Rp ${subtotal.toLocaleString('id-ID')}</td>
                             </tr>
                         `;
                     });
+                    
+                    if(detailsArr.length === 0) {
+                        rowsHtml = `<tr><td colspan="4" class="text-center py-4 text-gray-400">Tidak ada detail obat.</td></tr>`;
+                    }
+                    
                     document.getElementById('modalItemRows').innerHTML = rowsHtml;
 
-                    document.getElementById('modalUangDiterima').innerText = `Rp ${parseInt(tx.uang_diterima).toLocaleString('id-ID')}`;
-                    document.getElementById('modalKembalian').innerText = `Rp ${parseInt(tx.kembalian).toLocaleString('id-ID')}`;
-                    document.getElementById('modalTotal').innerText = `Rp ${parseInt(tx.total).toLocaleString('id-ID')}`;
+                    document.getElementById('modalUangDiterima').innerText = `Rp ${parseInt(tx.uang_diterima || tx.bayar || 0).toLocaleString('id-ID')}`;
+                    document.getElementById('modalKembalian').innerText = `Rp ${parseInt(tx.kembalian || 0).toLocaleString('id-ID')}`;
+                    document.getElementById('modalTotal').innerText = `Rp ${parseInt(tx.total || 0).toLocaleString('id-ID')}`;
                 }
             })
             .catch(err => {

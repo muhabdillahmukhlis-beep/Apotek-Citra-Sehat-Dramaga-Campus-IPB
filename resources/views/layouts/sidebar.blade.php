@@ -12,6 +12,7 @@
     </div>
 
     <div class="flex-1 px-4 space-y-6 overflow-y-auto custom-scrollbar">
+        {{-- KELOMPOK UTAMA --}}
         <div>
             <p class="px-2 mb-2 text-[10px] font-bold text-green-400/50 tracking-widest uppercase">Utama</p>
             <div class="space-y-1">
@@ -21,13 +22,14 @@
                     <span class="text-sm font-medium">Dashboard</span>
                 </a>
                 <a href="{{ route('obat.index') }}" 
-                   class="flex items-center gap-3 px-3 py-2.5 rounded-xl {{ request()->routeIs('obat.index') ? 'bg-[#2E7D32] shadow-md border border-white/10' : 'hover:bg-[#2E7D32]/50 text-gray-300 hover:text-white' }} transition-all group">
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-xl {{ request()->routeIs('obat.index') || request()->routeIs('obat.show') || request()->routeIs('obat.edit') ? 'bg-[#2E7D32] shadow-md border border-white/10' : 'hover:bg-[#2E7D32]/50 text-gray-300 hover:text-white' }} transition-all group">
                     <i class="fas fa-pills w-5 text-center group-hover:scale-110 transition-transform"></i>
                     <span class="text-sm font-medium">Data Obat</span>
                 </a>
             </div>
         </div>
 
+        {{-- KELOMPOK PENJUALAN --}}
         <div>
             <p class="px-2 mb-2 text-[10px] font-bold text-green-400/50 tracking-widest uppercase">Penjualan</p>
             <div class="space-y-1">
@@ -40,13 +42,14 @@
                     <span class="bg-green-500 text-[9px] px-1.5 py-0.5 rounded-md font-bold text-white shadow-sm">F2</span>
                 </a>
                 <a href="{{ route('transaksi.index') }}" 
-                   class="flex items-center gap-3 px-3 py-2.5 rounded-xl {{ request()->routeIs('transaksi.index') ? 'bg-[#2E7D32] shadow-md border border-white/10' : 'hover:bg-[#2E7D32]/50 text-gray-300 hover:text-white' }} transition-all group">
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-xl {{ request()->routeIs('transaksi.index') || request()->routeIs('transaksi.show') ? 'bg-[#2E7D32] shadow-md border border-white/10' : 'hover:bg-[#2E7D32]/50 text-gray-300 hover:text-white' }} transition-all group">
                     <i class="fas fa-history w-5 text-center group-hover:scale-110 transition-transform"></i>
                     <span class="text-sm font-medium">Riwayat Transaksi</span>
                 </a>
             </div>
         </div>
 
+        {{-- KELOMPOK INVENTORI --}}
         <div>
             <p class="px-2 mb-2 text-[10px] font-bold text-green-400/50 tracking-widest uppercase">Inventori</p>
             <div class="space-y-1">
@@ -72,25 +75,34 @@
             </div>
         </div>
 
-        <div>
-            <p class="px-2 mb-2 text-[10px] font-bold text-green-400/50 tracking-widest uppercase">Sistem</p>
-            <div class="space-y-1 text-gray-300">
-                <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#2E7D32]/50 transition-all cursor-not-allowed opacity-50">
-                    <i class="fas fa-cog w-5 text-center"></i>
-                    <span class="text-sm font-medium">Pengaturan</span>
-                </div>
-            </div>
+{{-- KELOMPOK SISTEM --}}
+<div>
+    <p class="px-2 mb-2 text-[10px] font-bold text-green-400/50 tracking-widest uppercase">Sistem</p>
+    <div class="space-y-1">
+        
+        {{-- DIKUNCI TANPA @IF AGAR PASTI MUNCUL DI LAYAR --}}
+        <a href="{{ route('user.index') }}" 
+           class="flex items-center gap-3 px-3 py-2.5 rounded-xl {{ request()->routeIs('user.*') ? 'bg-[#2E7D32] shadow-md border border-white/10 font-semibold text-white' : 'hover:bg-[#2E7D32]/50 text-gray-300 hover:text-white' }} transition-all group">
+            <i class="fas fa-users-cog w-5 text-center group-hover:scale-110 transition-transform"></i>
+            <span class="text-sm font-medium">Manajemen Pengguna</span>
+        </a>
+
+        <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#2E7D32]/50 transition-all cursor-not-allowed opacity-50 text-gray-300">
+            <i class="fas fa-cog w-5 text-center"></i>
+            <span class="text-sm font-medium">Pengaturan</span>
         </div>
     </div>
+</div>
 
+    {{-- DETAIL LOGIN USER --}}
     <div class="px-4 mt-auto pt-6 border-t border-green-800/50">
         <div class="flex items-center justify-between p-3 bg-[#144316] rounded-2xl border border-white/5">
             <div class="flex items-center gap-3 overflow-hidden">
                 <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-[#2E7D32] to-[#1B5E20] flex items-center justify-center font-bold text-xs uppercase shadow-inner border border-white/10 shrink-0">
-                    {{ substr(Auth::user()->name ?? 'AD', 0, 2) }}
+                    {{ substr(Auth::user()->nama ?? 'AD', 0, 2) }}
                 </div>
                 <div class="overflow-hidden">
-                    <h4 class="text-[11px] font-bold leading-none truncate text-white">{{ Auth::user()->name ?? 'Administrator' }}</h4>
+                    <h4 class="text-[11px] font-bold leading-none truncate text-white">{{ Auth::user()->nama ?? 'Administrator' }}</h4>
                     <p class="text-[9px] text-green-400 mt-1 uppercase font-bold tracking-tighter">{{ Auth::user()->role ?? 'Apoteker' }}</p>
                 </div>
             </div>

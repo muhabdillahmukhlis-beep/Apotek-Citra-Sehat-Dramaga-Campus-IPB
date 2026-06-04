@@ -19,6 +19,7 @@ class User extends Authenticatable
     protected $table = 'users';
 
     // Kolom yang boleh diisi secara massal (mass assignment)
+    // Sesuai dengan database Anda menggunakan 'nama'
     protected $fillable = [
         'nama',
         'username',
@@ -27,35 +28,34 @@ class User extends Authenticatable
         'role',
         'no_telepon',
         'is_aktif',
+        'last_login_at', // Ditambahkan agar bisa mencatat waktu login terbaru
     ];
     
-        public function getAuthPassword()
-        {
-            return $this->password;
-        }
+    public function getAuthPassword()
+    {
+        return $this->password;
+    }
+
     // Kolom yang disembunyikan saat model dikonversi ke array/JSON
-    // Penting: password tidak boleh pernah dikirim ke frontend!
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    // Cast tipe data otomatis
+    // Menggunakan penanganan cast tipe data versi terbaru (Laravel 11+)
     protected function casts(): array
     {
         return [
-            // Password otomatis di-hash saat disimpan ke database
-            'password'      => 'hashed',
-            'is_aktif'      => 'boolean',
-            'last_login_at' => 'datetime',
-            'created_at'    => 'datetime',
-            'updated_at'    => 'datetime',
+            'email_verified_at' => 'datetime',
+            'password'          => 'hashed',
+            'is_aktif'          => 'boolean',
+            'last_login_at'     => 'datetime',
+            'created_at'        => 'datetime',
+            'updated_at'        => 'datetime',
         ];
     }
 
     // ── Konstanta Role ────────────────────────────────────────
-    // Gunakan konstanta ini agar tidak ada typo di kode lain
-    // Contoh: if ($user->role === User::ROLE_ADMIN)
     const ROLE_ADMIN    = 'admin';
     const ROLE_KASIR    = 'kasir';
     const ROLE_APOTEKER = 'apoteker';
@@ -70,9 +70,6 @@ class User extends Authenticatable
     ];
 
     // ── Pengecekan Role ───────────────────────────────────────
-    // Helper method untuk cek role dengan mudah
-    // Contoh penggunaan di controller: auth()->user()->isAdmin()
-
     public function isAdmin(): bool
     {
         return $this->role === self::ROLE_ADMIN;
@@ -93,26 +90,18 @@ class User extends Authenticatable
         return $this->role === self::ROLE_PEMILIK;
     }
 
-    // Cek apakah user memiliki salah satu dari beberapa role
-    // Contoh: $user->hasRole(['admin', 'apoteker'])
     public function hasRole(string|array $roles): bool
     {
         return in_array($this->role, (array) $roles);
     }
 
     // ── Accessor ─────────────────────────────────────────────
-    // Accessor adalah computed property yang bisa dipanggil
-    // seperti kolom biasa: $user->nama_role
-
-    // Nama role yang mudah dibaca manusia
-    // Contoh: 'admin' → 'Admin', 'pemilik' → 'Pemilik Apotek'
     public function getNamaRoleAttribute(): string
     {
         return self::ROLES[$this->role] ?? ucfirst($this->role);
     }
 
-    // Inisial nama untuk avatar di sidebar
-    // Contoh: 'Rina Kartika' → 'RK'
+    // Inisial nama untuk avatar di sidebar (Kembali menggunakan properti $this->nama)
     public function getInisialsAttribute(): string
     {
         $kata    = explode(' ', trim($this->nama));
@@ -132,68 +121,53 @@ class User extends Authenticatable
     }
 
     // ── Query Scope ───────────────────────────────────────────
-    // Scope adalah filter query yang bisa dirantai
-    // Contoh: User::aktif()->role('kasir')->get()
-
-    // Hanya ambil user yang aktif
     public function scopeAktif(Builder $query): Builder
     {
         return $query->where('is_aktif', true);
     }
 
-    // Filter berdasarkan role tertentu
     public function scopeRole(Builder $query, string $role): Builder
     {
         return $query->where('role', $role);
     }
 
-    // Cari berdasarkan nama, username, atau email
+    // Cari berdasarkan nama, username, atau email (Kembali menggunakan properti 'nama')
     public function scopeCari(Builder $query, string $keyword): Builder
     {
         return $query->where(function ($q) use ($keyword) {
-            $q->where('nama',     'ilike', "%{$keyword}%")
-              ->orWhere('username', 'ilike', "%{$keyword}%")
-              ->orWhere('email',    'ilike', "%{$keyword}%");
+            $q->where('nama',       'LIKE', "%{$keyword}%")
+              ->orWhere('username', 'LIKE', "%{$keyword}%")
+              ->orWhere('email',    'LIKE', "%{$keyword}%");
         });
     }
 
     // ── Relasi ke Tabel Lain ──────────────────────────────────
-
-    // Transaksi yang diproses oleh user ini (sebagai kasir)
     public function transaksi()
     {
         return $this->hasMany(Transaksi::class, 'kasir_id');
     }
 
-    // Notifikasi yang ditujukan khusus ke user ini
     public function notifikasi()
     {
         return $this->hasMany(Notifikasi::class, 'user_id');
     }
 
-    // Perubahan stok yang dilakukan oleh user ini
     public function stokLog()
     {
         return $this->hasMany(StokLog::class, 'user_id');
     }
 
-    // Laporan yang pernah dibuat oleh user ini
     public function laporan()
     {
         return $this->hasMany(Laporan::class, 'dibuat_oleh');
     }
 
     // ── Method Bisnis ─────────────────────────────────────────
-
-    // Catat waktu login terakhir
-    // Dipanggil di AuthController setelah login berhasil
     public function catatLoginTerakhir(): void
     {
         $this->update(['last_login_at' => now()]);
     }
 
-    // Hitung notifikasi yang belum dibaca
-    // Termasuk notifikasi global (user_id = NULL) dan khusus user ini
     public function jumlahNotifikasiBelumDibaca(): int
     {
         return Notifikasi::where(function ($q) {
