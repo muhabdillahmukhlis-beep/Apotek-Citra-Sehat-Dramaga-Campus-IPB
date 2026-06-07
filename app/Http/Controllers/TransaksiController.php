@@ -19,14 +19,22 @@ use App\Exports\TransaksiExport;
 class TransaksiController extends Controller
 {
     /**
-     * HALAMAN RIWAYAT (DENGAN FILTER)
+     * HALAMAN RIWAYAT (DENGAN FILTER KASIR FIX)
      */
     public function index(Request $request)
     {
         // Menggunakan helper filter agar konsisten
         $query = $this->applyFilter($request);
 
-        $kasirList = User::all(); 
+        /**
+         * 🌟 PERBAIKAN:
+         * Menghapus klausa pencarian kolom 'status' yang memicu query error 1054.
+         * Mengambil data user berdasarkan hak akses (role) dan diurutkan alfabetis (A-Z).
+         */
+        $kasirList = User::whereIn('role', ['admin', 'kasir']) 
+                         ->orderBy('nama', 'asc')
+                         ->get(); 
+                         
         $riwayat = $query->latest()->paginate(10)->withQueryString();
 
         return view('transaksi.index', compact('riwayat', 'kasirList'));
@@ -48,10 +56,20 @@ class TransaksiController extends Controller
             ]);
         }
 
-        // Filter Lainnya
-        if ($request->filled('kasir_id')) $query->where('kasir_id', $request->kasir_id);
-        if ($request->filled('metode')) $query->where('metode_bayar', $request->metode);
-        if ($request->filled('status')) $query->where('status', $request->status);
+        // Filter Berdasarkan Kasir Pembuat
+        if ($request->filled('kasir_id')) {
+            $query->where('kasir_id', $request->kasir_id);
+        }
+        
+        // Filter Berdasarkan Metode Pembayaran
+        if ($request->filled('metode')) {
+            $query->where('metode_bayar', $request->metode);
+        }
+        
+        // Filter Berdasarkan Status Transaksi
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
 
         return $query;
     }
@@ -107,6 +125,9 @@ class TransaksiController extends Controller
         return view('transaksi.print', compact('transaksi'));
     }
 
+    /**
+     * HALAMAN FORM TRANSAKSI BARU
+     */
     public function create()
     {
         $obatList = Obat::where('is_aktif', true)
@@ -143,7 +164,7 @@ class TransaksiController extends Controller
 
                 // INTERUPSI 1: Pengecekan sisa stok fisik obat di database (TC_TRX_003)
                 foreach ($request->items as $item) {
-                    // Menggunakan lockForUpdate untuk menghindari Race Condition di kasir
+                    // Menggunakan lockForUpdate untuk menghindari Race Condition (Tabrakan Stok)
                     $obat = Obat::lockForUpdate()->findOrFail($item['id']);
 
                     if ($obat->stok < $item['qty']) {
@@ -167,7 +188,7 @@ class TransaksiController extends Controller
                     throw new \Exception("Aksi Diblokir! Uang tunai kurang sebesar Rp " . number_format($kekurangan, 0, ',', '.') . " (Total Belanja: Rp " . number_format($total, 0, ',', '.') . ")");
                 }
 
-                // 2. Eksekusi Pembuatan Dokumen Transaksi Utama jika lolos filter
+                // 2. Eksekusi Pembuatan Dokumen Transaksi Utama jika lolos filter interupsi
                 $transaksi = Transaksi::create([
                     'no_transaksi'  => 'TRX-' . now()->format('YmdHis') . strtoupper(Str::random(4)),
                     'kasir_id'      => Auth::id() ?? 1,
@@ -205,7 +226,7 @@ class TransaksiController extends Controller
                     'message'  => "Transaksi Berhasil Disimpan! Kembalian: {$formattedKembali}",
                     'redirect' => route('transaksi.index')
                 ]);
-            }); // PERBAIKAN DI SINI: Mengubah ');' menjadi '});' agar closure terisolasi dengan benar
+            }); 
         } catch (\Exception $e) {
             // Mengembalikan pesan interupsi dalam bentuk JSON Error (HTTP 422)
             return response()->json([
@@ -216,7 +237,7 @@ class TransaksiController extends Controller
     }
 
     /**
-     * CLEAR RIWAYAT
+     * CLEAR RIWAYAT (RESET TRANSAKSI)
      */
     public function clear()
     {

@@ -15,6 +15,7 @@ class SettingSistemController extends Controller
 {
     /**
      * Menampilkan halaman konfigurasi sistem apotek (Info Apotek) dengan data dari database.
+     * Dapat dilihat oleh semua role pengguna.
      * * @return \Illuminate\Contracts\View\View
      */
     public function edit(): View
@@ -39,11 +40,18 @@ class SettingSistemController extends Controller
 
     /**
      * Memproses pembaruan data konfigurasi ambang batas sistem.
+     * Hanya diizinkan untuk pengguna dengan role 'admin' atau 'pemilik'.
      * * @param \Illuminate\Http\Request $request
      * @return \Illuminate\Http\RedirectResponse
      */
     public function update(Request $request): RedirectResponse
     {
+        // PROTEKSI TAMBAHAN: Memastikan hanya admin dan pemilik yang bisa menembus aksi simpan data
+        $roleUser = strtolower(trim(auth()->user()->role ?? ''));
+        if (!in_array($roleUser, ['admin', 'pemilik'])) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk mengubah kebijakan konfigurasi sistem.');
+        }
+
         // 1. Validasi Input Form (Bahasa Indonesia)
         $request->validate([
             'stok_minimum'    => 'required|integer|min:0',
@@ -81,7 +89,7 @@ class SettingSistemController extends Controller
             $notif = new Notifikasi();
             $notif->kategori  = 'sistem';
             $notif->judul     = 'Konfigurasi sistem diubah';
-            $notif->pesan     = 'Kebijakan sistem diperbarui oleh ' . $namaUser . '. Batas stok kritis disesuaikan menjadi ' . $request->stok_minimum . ' unit dan ambang batas kadaluarsa menjadi ' . $request->hari_kadaluarsa . ' hari.';
+            $notif->pesan     = 'Kebijakan sistem diperbarui oleh ' . $namaUser . ' (' . strtoupper($roleUser) . '). Batas stok kritis disesuaikan menjadi ' . $request->stok_minimum . ' unit dan ambang batas kadaluarsa menjadi ' . $request->hari_kadaluarsa . ' hari.';
             $notif->is_dibaca = false;
             $notif->save();
 
@@ -106,7 +114,7 @@ class SettingSistemController extends Controller
     }
 
     // =============================================================================
-    // 🌟 LENGKAPI: METHOD TAMBAHAN UNTUK INTEGRASI SIDEBAR SEBELUMNYA
+    // METHOD TAMBAHAN UNTUK INTEGRASI HALAMAN SIDEBAR
     // =============================================================================
 
     /**

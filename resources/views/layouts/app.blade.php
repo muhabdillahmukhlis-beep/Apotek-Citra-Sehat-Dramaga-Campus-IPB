@@ -47,12 +47,10 @@
                                 <i class="fa-solid fa-chart-pie text-lg"></i> <span class="text-sm">Dashboard</span>
                             </a>
                             
-                            {{-- Modul Data Obat hanya muncul untuk Admin dan Apoteker --}}
-                            @if(auth()->check() && in_array(strtolower(trim(auth()->user()->role)), ['admin', 'apoteker']))
+                            {{-- BYPASS: Data Obat dibuka penuh --}}
                             <a href="{{ route('obat.index') }}" class="flex items-center gap-4 px-4 py-3 rounded-2xl transition-all {{ request()->routeIs('obat.*') && !request()->routeIs('obat.expired') ? 'bg-[#2E7D32] font-bold shadow-lg shadow-black/10' : 'text-gray-300 hover:bg-[#2E7D32]/50 hover:text-white' }}">
                                 <i class="fa-solid fa-pills text-lg"></i> <span class="text-sm">Data Obat</span>
                             </a>
-                            @endif
                         </div>
                     </div>
 
@@ -74,40 +72,34 @@
                     <div>
                         <p class="text-[10px] font-bold text-green-400/50 tracking-widest uppercase mb-3 ml-2">Inventori & Analitik</p>
                         <div class="space-y-1">
-                            {{-- Modul Manajemen Stok hanya muncul untuk Admin dan Apoteker --}}
-                            @if(auth()->check() && in_array(strtolower(trim(auth()->user()->role)), ['admin', 'apoteker']))
+                            {{-- BYPASS: Manajemen Stok dibuka penuh --}}
                             <a href="{{ route('stok.index') }}" class="flex items-center gap-4 px-4 py-3 rounded-2xl transition-all {{ request()->routeIs('stok.*') ? 'bg-[#2E7D32] font-bold shadow-lg' : 'text-gray-300 hover:bg-[#2E7D32]/50 hover:text-white' }}">
                                 <i class="fa-solid fa-boxes-stacked text-lg"></i> <span class="text-sm">Manajemen Stok</span>
                             </a>
                             
+                            {{-- BYPASS: Monitoring Expired dibuka penuh --}}
                             <a href="{{ route('obat.expired') }}" class="flex items-center justify-between px-4 py-3 rounded-2xl transition-all {{ request()->routeIs('obat.expired') ? 'bg-[#2E7D32] font-bold shadow-lg' : 'text-gray-300 hover:bg-[#2E7D32]/50 hover:text-white' }}">
                                 <div class="flex items-center gap-4">
                                     <i class="fa-solid fa-hourglass-half text-lg"></i> <span class="text-sm">Monitoring Expired</span>
                                 </div>
                                 <span class="bg-red-500 text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-bold shadow-lg text-white">5</span>
                             </a>
-                            @endif
 
-                            {{-- Modul Laporan Analitik Keuangan (Admin & Pemilik Berhak Melihat) --}}
-                            @if(auth()->check() && in_array(strtolower(trim(auth()->user()->role)), ['admin', 'pemilik']))
+                            {{-- BYPASS: Laporan Analitik dibuka penuh --}}
                             <a href="{{ route('laporan.index') }}" class="flex items-center gap-4 px-4 py-3 rounded-2xl transition-all {{ request()->routeIs('laporan.*') ? 'bg-[#2E7D32] font-bold shadow-lg' : 'text-gray-300 hover:bg-[#2E7D32]/50 hover:text-white' }}">
                                 <i class="fa-solid fa-chart-line text-lg"></i> <span class="text-sm">Laporan Analitik</span>
                             </a>
-                            @endif
                         </div>
                     </div>
 
                     <div>
                         <p class="text-[10px] font-bold text-green-400/50 tracking-widest uppercase mb-3 ml-2">Sistem</p>
                         <div class="space-y-1">
-                            {{-- Manajemen Pengguna Hanya Muncul untuk Admin --}}
-                            @if(auth()->check() && strtolower(trim(auth()->user()->role)) === 'admin')
+                            {{-- BYPASS: Manajemen Pengguna dibuka penuh --}}
                             <a href="{{ route('user.index') }}" class="flex items-center gap-4 px-4 py-3 rounded-2xl transition-all {{ request()->routeIs('user.*') ? 'bg-[#2E7D32] font-bold shadow-lg shadow-black/10' : 'text-gray-300 hover:bg-[#2E7D32]/50 hover:text-white' }}">
                                 <i class="fa-solid fa-users-gear text-lg"></i> <span class="text-sm">Manajemen Pengguna</span>
                             </a>
-                            @endif
 
-                            {{-- Menu Notifikasi Baru (Tersedia bagi Admin, Apoteker, Kasir) --}}
                             <a href="{{ route('notifikasi.index') }}" class="flex items-center justify-between px-4 py-3 rounded-2xl transition-all {{ request()->routeIs('notifikasi.*') ? 'bg-[#2E7D32] font-bold shadow-lg shadow-black/10' : 'text-gray-300 hover:bg-[#2E7D32]/50 hover:text-white' }}">
                                 <div class="flex items-center gap-4">
                                     <i class="fa-solid fa-bell text-lg"></i> <span class="text-sm">Notifikasi</span>
@@ -115,12 +107,10 @@
                                 <span class="bg-red-500 text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-bold shadow-lg text-white">3</span>
                             </a>
 
-                            {{-- Menu Pengaturan Khusus Admin --}}
-                            @if(auth()->check() && strtolower(trim(auth()->user()->role)) === 'admin')
+                            {{-- BYPASS: Pengaturan dibuka penuh --}}
                             <a href="{{ route('pengaturan.index') }}" class="flex items-center gap-4 px-4 py-3 rounded-2xl transition-all {{ request()->routeIs('pengaturan.*') ? 'bg-[#2E7D32] font-bold shadow-lg shadow-black/10' : 'text-gray-300 hover:bg-[#2E7D32]/50 hover:text-white' }}">
                                 <i class="fa-solid fa-gear text-lg"></i> <span class="text-sm">Pengaturan</span>
                             </a>
-                            @endif
                         </div>
                     </div>
                 </nav>
@@ -170,7 +160,6 @@
             </header>
 
             <div class="p-8 flex-1">
-                {{-- Alert Pesan Sukses / Error --}}
                 @if(session('error'))
                     <div class="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-xl flex items-center gap-3 text-red-700 shadow-sm">
                         <i class="fa-solid fa-circle-exclamation text-lg"></i>
@@ -196,17 +185,12 @@
 
     <script>
     document.addEventListener('keydown', function(event) {
-        // 1. Memastikan mendeteksi penekanan tombol F2
         if (event.key === 'F2') {
-            
-            // 2. Mencegah fungsi bawaan browser (misal: refresh/bantuan bawaan windows jika ada)
             event.preventDefault();
-            
-            // 3. Mengarahkan langsung ke rute transaksi baru yang sudah kita temukan
             window.location.href = "{{ route('transaksi.create') }}";
         }
     });
-</script>
+    </script>
 
     @stack('scripts')
 </body>

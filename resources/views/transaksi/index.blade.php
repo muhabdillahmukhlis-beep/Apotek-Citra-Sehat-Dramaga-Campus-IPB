@@ -27,7 +27,7 @@
                 <select name="kasir_id" class="border rounded-lg p-2 text-sm min-w-[140px] outline-none border-gray-200">
                     <option value="">Semua Kasir</option>
                     @foreach($kasirList as $k)
-                        <option value="{{ $k->id }}" {{ request('kasir_id') == $k->id ? 'selected' : '' }}>{{ $k->name }}</option>
+                        <option value="{{ $k->id }}" {{ request('kasir_id') == $k->id ? 'selected' : '' }}>{{ $k->nama }}</option>
                     @endforeach
                 </select>
             </div>
@@ -65,6 +65,7 @@
         </div>
     </form>
 
+    {{-- Tabel Data --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left">
@@ -84,7 +85,7 @@
                     <tr class="hover:bg-gray-50/50 transition">
                         <td class="p-4 font-bold text-gray-700">{{ $trx->no_transaksi }}</td>
                         <td class="p-4 text-gray-500">{{ $trx->created_at->format('d/m/Y H:i') }}</td>
-                        <td class="p-4 text-gray-600">{{ $trx->kasir->name ?? 'Admin' }}</td>
+                        <td class="p-4 text-gray-600">{{ $trx->kasir->nama ?? 'Admin' }}</td>
                         <td class="p-4 font-bold text-gray-800">Rp {{ number_format($trx->total, 0, ',', '.') }}</td>
                         <td class="p-4">
                             <span class="text-xs px-2 py-1 bg-gray-100 rounded text-gray-600">{{ $trx->metode_bayar }}</span>
@@ -97,8 +98,8 @@
                         </td>
                         <td class="p-4">
                             <div class="flex justify-center gap-2">
-                                <button onclick="showDetail({{ $trx->id }})" class="bg-white border border-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-50 hover:border-green-500 transition">Detail</button>
-                                <button onclick="cetakStruk({{ $trx->id }})" class="bg-white border border-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-50 hover:border-blue-500 transition">Struk</button>
+                                <button type="button" onclick="showDetail({{ $trx->id }})" class="bg-white border border-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-50 hover:border-green-500 transition outline-none">Detail</button>
+                                <button type="button" onclick="cetakStruk({{ $trx->id }})" class="bg-white border border-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-50 hover:border-blue-500 transition outline-none">Struk</button>
                             </div>
                         </td>
                     </tr>
@@ -130,7 +131,7 @@
                 <h3 class="text-xl font-bold text-gray-800">Detail Transaksi</h3>
                 <p class="text-xs text-gray-500" id="modalTrxId">ID Transaksi: -</p>
             </div>
-            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+            <button type="button" onclick="closeModal()" class="text-gray-400 hover:text-gray-600 transition-colors outline-none">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
         </div>
@@ -138,8 +139,8 @@
             {{-- Konten diisi via JavaScript --}}
         </div>
         <div class="p-4 border-t bg-white flex justify-end gap-3">
-            <button onclick="closeModal()" class="bg-gray-100 text-gray-700 px-6 py-2 rounded-xl font-bold hover:bg-gray-200 transition">Tutup</button>
-            <button id="btnCetakModal" class="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-100">Cetak Struk</button>
+            <button type="button" onclick="closeModal()" class="bg-gray-100 text-gray-700 px-6 py-2 rounded-xl font-bold hover:bg-gray-200 transition outline-none">Tutup</button>
+            <button type="button" id="btnCetakModal" class="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-100 outline-none">Cetak Struk</button>
         </div>
     </div>
 </div>
@@ -181,6 +182,7 @@
                     </tr>
                 `).join('');
 
+                // 🌟 PERBAIKAN UTAMA: Mengabaikan simbol '\' pada template literal agar variabel internal render dengan sempurna
                 content.innerHTML = `
                     <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm mb-6 grid grid-cols-2 gap-y-4">
                         <div>
@@ -193,7 +195,7 @@
                         </div>
                         <div>
                             <p class="text-[10px] text-gray-400 uppercase font-black tracking-widest">Kasir</p>
-                            <p class="text-sm font-semibold text-gray-700">${trx.kasir ? trx.kasir.name : 'Admin'}</p>
+                            <p class="text-sm font-semibold text-gray-700">${trx.kasir ? trx.kasir.nama : 'Admin'}</p>
                         </div>
                         <div class="text-right">
                             <p class="text-[10px] text-gray-400 uppercase font-black tracking-widest">Status</p>

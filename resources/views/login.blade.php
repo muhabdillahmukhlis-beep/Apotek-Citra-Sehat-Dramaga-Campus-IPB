@@ -56,6 +56,7 @@
 
         <form action="{{ route('login') }}" method="POST" class="space-y-5">
             @csrf 
+            
             @if($errors->any())
                 <div class="bg-red-50 text-red-600 p-4 rounded-2xl text-xs font-bold border border-red-100 flex items-center gap-2">
                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/></svg>
@@ -64,7 +65,8 @@
             @endif
 
             <div>
-                <label class="block text-[11px] font-bold text-[#4A5C4A] mb-2 uppercase tracking-[0.15em]">ID / Username</label>
+                <label class="block text-[11px] font-bold text-[#4A5C4A] mb-2 uppercase tracking-[0.15em]">Username / Email</label>
+                {{-- 🌟 FIX: Atribut name diubah menjadi 'email' agar lolos validasi controller hibrida --}}
                 <input type="text" name="email" value="{{ old('email') }}" required 
                     class="w-full h-14 px-5 border-2 border-[#E8F5E9] rounded-2xl bg-[#FAFFF9] text-[#1A2E1A] font-semibold focus:border-[#2E7D32] focus:outline-none focus:ring-4 focus:ring-[#2E7D32]/5 transition-all outline-none"
                     placeholder="Contoh: admin">

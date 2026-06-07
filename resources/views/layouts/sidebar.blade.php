@@ -1,3 +1,14 @@
+<?php
+    // Ambil data user login dan seragamkan string role agar aman dari perbedaan kapitalisasi
+    $userLogin   = Auth::user();
+    $roleUser    = strtolower(trim($userLogin->role ?? ''));
+    
+    // Pemetaan variabel nama dan inisial teks profil bawah
+    $namaTeks    = $userLogin->nama ?? $userLogin->name ?? $userLogin->username ?? 'Staf Apotek';
+    $inisialNama = strtoupper(substr($namaTeks, 0, 2));
+    $roleTeks    = $userLogin->nama_role ?? ucfirst($userLogin->role ?? 'User');
+?>
+
 <aside class="w-64 min-h-screen bg-[#1B5E20] text-white flex flex-col py-6 fixed left-0 top-0 z-20 shadow-2xl">
     <div class="px-6 mb-8">
         <div class="flex items-center gap-3">
@@ -12,27 +23,36 @@
     </div>
 
     <div class="flex-1 px-4 space-y-6 overflow-y-auto custom-scrollbar">
-        {{-- KELOMPOK UTAMA --}}
+        
+        {{-- 1. KELOMPOK UTAMA (Akses Terbuka) --}}
         <div>
             <p class="px-2 mb-2 text-[10px] font-bold text-green-400/50 tracking-widest uppercase">Utama</p>
             <div class="space-y-1">
+                {{-- Dashboard: Semua Role --}}
                 <a href="{{ route('dashboard') }}" 
                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl {{ request()->routeIs('dashboard') ? 'bg-[#2E7D32] shadow-md border border-white/10' : 'hover:bg-[#2E7D32]/50 text-gray-300 hover:text-white' }} transition-all group">
                     <i class="fas fa-th-large w-5 text-center group-hover:scale-110 transition-transform"></i>
                     <span class="text-sm font-medium">Dashboard</span>
                 </a>
+
+                {{-- Data Obat: Hanya Admin, Pemilik, dan Apoteker --}}
+                @if(in_array($roleUser, ['admin', 'pemilik', 'apoteker']))
                 <a href="{{ route('obat.index') }}" 
                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl {{ request()->routeIs('obat.index') || request()->routeIs('obat.show') || request()->routeIs('obat.edit') ? 'bg-[#2E7D32] shadow-md border border-white/10' : 'hover:bg-[#2E7D32]/50 text-gray-300 hover:text-white' }} transition-all group">
                     <i class="fas fa-pills w-5 text-center group-hover:scale-110 transition-transform"></i>
                     <span class="text-sm font-medium">Data Obat</span>
                 </a>
+                @endif
             </div>
         </div>
 
-        {{-- KELOMPOK PENJUALAN --}}
+        {{-- 2. KELOMPOK PENJUALAN --}}
+        {{-- Hanya tampil untuk Admin, Pemilik, dan Kasir (Apoteker tidak melihat) --}}
+        @if(in_array($roleUser, ['admin', 'pemilik', 'kasir']))
         <div>
             <p class="px-2 mb-2 text-[10px] font-bold text-green-400/50 tracking-widest uppercase">Penjualan</p>
             <div class="space-y-1">
+                {{-- Transaksi Baru --}}
                 <a href="{{ route('transaksi.create') }}" 
                    class="flex items-center justify-between px-3 py-2.5 rounded-xl {{ request()->routeIs('transaksi.create') ? 'bg-[#2E7D32] shadow-md border border-white/10' : 'hover:bg-[#2E7D32]/50 text-gray-300 hover:text-white' }} transition-all group">
                     <div class="flex items-center gap-3">
@@ -41,6 +61,8 @@
                     </div>
                     <span class="bg-green-500 text-[9px] px-1.5 py-0.5 rounded-md font-bold text-white shadow-sm">F2</span>
                 </a>
+                
+                {{-- Riwayat Transaksi --}}
                 <a href="{{ route('transaksi.index') }}" 
                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl {{ request()->routeIs('transaksi.index') || request()->routeIs('transaksi.show') ? 'bg-[#2E7D32] shadow-md border border-white/10' : 'hover:bg-[#2E7D32]/50 text-gray-300 hover:text-white' }} transition-all group">
                     <i class="fas fa-history w-5 text-center group-hover:scale-110 transition-transform"></i>
@@ -48,16 +70,22 @@
                 </a>
             </div>
         </div>
+        @endif
 
-        {{-- KELOMPOK INVENTORI --}}
+        {{-- 3. KELOMPOK INVENTORI --}}
+        {{-- Hanya tampil untuk Admin, Pemilik, dan Apoteker (Kasir tidak melihat) --}}
+        @if(in_array($roleUser, ['admin', 'pemilik', 'apoteker']))
         <div>
             <p class="px-2 mb-2 text-[10px] font-bold text-green-400/50 tracking-widest uppercase">Inventori</p>
             <div class="space-y-1">
+                {{-- Manajemen Stok --}}
                 <a href="{{ route('stok.index') }}" 
                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl {{ request()->routeIs('stok.*') ? 'bg-[#2E7D32] shadow-md border border-white/10' : 'hover:bg-[#2E7D32]/50 text-gray-300 hover:text-white' }} transition-all group">
                     <i class="fas fa-boxes w-5 text-center group-hover:scale-110 transition-transform"></i>
                     <span class="text-sm font-medium">Manajemen Stok</span>
                 </a>
+                
+                {{-- Monitoring Expired --}}
                 <a href="{{ route('obat.expired') }}" 
                    class="flex items-center justify-between px-3 py-2.5 rounded-xl {{ request()->routeIs('obat.expired') ? 'bg-[#2E7D32] shadow-md border border-white/10' : 'hover:bg-[#2E7D32]/50 text-gray-300 hover:text-white' }} transition-all group">
                     <div class="flex items-center gap-3">
@@ -67,49 +95,62 @@
                     <span class="bg-red-500 text-[10px] px-2 py-0.5 rounded-full font-bold text-white animate-pulse">5</span>
                 </a>
                 
+                {{-- Laporan Analitik: Khusus Admin dan Pemilik --}}
+                @if(in_array($roleUser, ['admin', 'pemilik']))
                 <a href="{{ route('laporan.index') }}" 
                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl {{ request()->routeIs('laporan.*') ? 'bg-[#2E7D32] text-white shadow-lg border border-white/10' : 'text-gray-300 hover:bg-[#2E7D32]/50 hover:text-white' }} transition-all group mt-1">
                     <i class="fas fa-chart-line w-5 text-center group-hover:scale-110 transition-transform"></i>
                     <span class="text-sm font-medium">Laporan Analitik</span>
                 </a>
+                @endif
+            </div>
+        </div>
+        @endif
+
+        {{-- 4. KELOMPOK CONFIG SISTEM --}}
+        <div>
+            <p class="px-2 mb-2 text-[10px] font-bold text-green-400/50 tracking-widest uppercase">Sistem</p>
+            <div class="space-y-1">
+                {{-- Manajemen Pengguna: Khusus Admin dan Pemilik --}}
+                @if(in_array($roleUser, ['admin', 'pemilik']))
+                <a href="{{ route('user.index') }}" 
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-xl {{ request()->routeIs('user.*') ? 'bg-[#2E7D32] shadow-md border border-white/10 font-semibold text-white' : 'hover:bg-[#2E7D32]/50 text-gray-300 hover:text-white' }} transition-all group">
+                    <i class="fas fa-users-cog w-5 text-center group-hover:scale-110 transition-transform"></i>
+                    <span class="text-sm font-medium">Manajemen Pengguna</span>
+                </a>
+                @endif
+
+                {{-- Pengaturan: Terbuka untuk semua role --}}
+                <a href="{{ route('sistem.index') }}" 
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-xl {{ request()->routeIs('sistem.*') ? 'bg-[#2E7D32] shadow-md border border-white/10 font-semibold text-white' : 'hover:bg-[#2E7D32]/50 text-gray-300 hover:text-white' }} transition-all group">
+                    <i class="fas fa-cog w-5 text-center group-hover:scale-110 transition-transform"></i>
+                    <span class="text-sm font-medium">Pengaturan</span>
+                </a>
             </div>
         </div>
 
-{{-- KELOMPOK SISTEM --}}
-<div>
-    <p class="px-2 mb-2 text-[10px] font-bold text-green-400/50 tracking-widest uppercase">Sistem</p>
-    <div class="space-y-1">
-        
-        {{-- DIKUNCI TANPA @IF AGAR PASTI MUNCUL DI LAYAR --}}
-        <a href="{{ route('user.index') }}" 
-           class="flex items-center gap-3 px-3 py-2.5 rounded-xl {{ request()->routeIs('user.*') ? 'bg-[#2E7D32] shadow-md border border-white/10 font-semibold text-white' : 'hover:bg-[#2E7D32]/50 text-gray-300 hover:text-white' }} transition-all group">
-            <i class="fas fa-users-cog w-5 text-center group-hover:scale-110 transition-transform"></i>
-            <span class="text-sm font-medium">Manajemen Pengguna</span>
-        </a>
+    </div> 
 
-        <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#2E7D32]/50 transition-all cursor-not-allowed opacity-50 text-gray-300">
-            <i class="fas fa-cog w-5 text-center"></i>
-            <span class="text-sm font-medium">Pengaturan</span>
-        </div>
-    </div>
-</div>
-
-    {{-- DETAIL LOGIN USER --}}
-    <div class="px-4 mt-auto pt-6 border-t border-green-800/50">
+    {{-- PANEL DETAIL LOGIN USER --}}
+    <div class="px-4 mt-auto pt-4 border-t border-green-800/50">
         <div class="flex items-center justify-between p-3 bg-[#144316] rounded-2xl border border-white/5">
             <div class="flex items-center gap-3 overflow-hidden">
-                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-[#2E7D32] to-[#1B5E20] flex items-center justify-center font-bold text-xs uppercase shadow-inner border border-white/10 shrink-0">
-                    {{ substr(Auth::user()->nama ?? 'AD', 0, 2) }}
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-[#2E7D32] to-[#1B5E20] flex items-center justify-center font-bold text-xs uppercase shadow-inner border border-white/10 shrink-0 text-white">
+                    {{ $inisialNama }}
                 </div>
                 <div class="overflow-hidden">
-                    <h4 class="text-[11px] font-bold leading-none truncate text-white">{{ Auth::user()->nama ?? 'Administrator' }}</h4>
-                    <p class="text-[9px] text-green-400 mt-1 uppercase font-bold tracking-tighter">{{ Auth::user()->role ?? 'Apoteker' }}</p>
+                    <h4 class="text-[11px] font-bold leading-none truncate text-white">
+                        {{ $namaTeks }}
+                    </h4>
+                    <p class="text-[9px] text-green-400 mt-1 uppercase font-bold tracking-tighter">
+                        {{ $roleTeks }}
+                    </p>
                 </div>
             </div>
             
             <form action="{{ route('logout') }}" method="POST" class="shrink-0 ml-2">
                 @csrf
-                <button type="submit" onclick="return confirm('Apakah Anda yakin ingin keluar?')"
+                <button type="submit" onclick="return confirm('Apakah Anda yakin ingin keluar dari sistem?')"
                         class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-red-500 hover:text-white transition-all">
                     <i class="fas fa-sign-out-alt text-sm"></i>
                 </button>

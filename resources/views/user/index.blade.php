@@ -13,7 +13,7 @@
             <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs">
                 <i class="fas fa-search"></i>
             </span>
-            <input type="text" placeholder="Cari obat, transaksi, laporan..." 
+            <input type="text" placeholder="Cari berdasarkan nama atau username..." 
                    class="w-full h-10 pl-10 pr-4 bg-[#F0F4F0] rounded-full text-xs font-medium border-none outline-none focus:ring-1 focus:ring-[#2E7D32]">
         </div>
     </div>
@@ -64,7 +64,10 @@
                     <tbody class="divide-y divide-[#F9FBF9] text-xs">
                         @forelse($users as $user)
                         <tr class="hover:bg-[#F9FBF9] transition-colors">
-                            <td class="py-4 pl-2 font-bold text-[#1A2E1A] max-w-[180px] break-words">{{ $user->nama }}</td>
+                            {{-- PENYELARASAN: Fallback nama kolom agar kompatibel dengan sistem Controller --}}
+                            <td class="py-4 pl-2 font-bold text-[#1A2E1A] max-w-[180px] break-words">
+                                {{ $user->nama ?? $user->name ?? $user->username }}
+                            </td>
                             <td class="py-4 font-mono font-bold text-[#7A8C7A]">{{ $user->username }}</td>
                             <td class="py-4 text-center">
                                 @php
@@ -76,7 +79,6 @@
                                     ];
                                     $class = $roleClasses[strtolower($user->role)] ?? 'bg-gray-50 text-gray-600';
                                 @endphp
-                                {{-- PERBAIKAN: Menggunakan properti database asli ($user->role) --}}
                                 <span class="px-3 py-1 rounded-full font-bold text-[10px] capitalize {{ $class }}">
                                     {{ $user->role }}
                                 </span>
@@ -93,7 +95,7 @@
                             <td class="py-4">
                                 <div class="flex items-center justify-center gap-2">
                                     {{-- Form Toggle Status Aktif/Nonaktif --}}
-                                    <form action="{{ route('user.status', $user->id) }}" method="POST">
+                                    <form action="{{ route('user.status', $user->id) }}" method="POST" class="inline">
                                         @csrf
                                         @method('PATCH')
                                         @if($user->is_aktif)
@@ -108,7 +110,7 @@
                                     </form>
 
                                     {{-- Form Hapus Akun Permanen --}}
-                                    <form action="{{ route('user.destroy', $user->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus pengguna {{ $user->nama }} secara permanen?')">
+                                    <form action="{{ route('user.destroy', $user->id) }}" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus pengguna {{ $user->nama ?? $user->name ?? $user->username }} secara permanen?')">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" title="Hapus User" class="w-7 h-7 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-lg flex items-center justify-center transition-all">
@@ -124,7 +126,7 @@
                         </tr>
                         @empty
                         <tr>
-                            {{-- PERBAIKAN: Colspan disesuaikan menjadi 6 sesuai total kolom di header --}}
+                            {{-- PERBAIKAN: Ubah colspan ke 6 menjadi 6 untuk menutup seluruh kolom dengan rapi --}}
                             <td colspan="6" class="py-8 text-center text-gray-400 font-medium">Belum ada data pengguna.</td>
                         </tr>
                         @endforelse
@@ -133,7 +135,7 @@
             </div>
         </div>
 
-        {{-- MATRIKS HAK AKSES STABIL --}}
+        {{-- MATRIKS HAK AKSES --}}
         <div class="xl:col-span-5 bg-white rounded-[24px] border border-[#D4E8D4] p-6 shadow-sm">
             <div class="mb-6">
                 <h2 class="font-sora font-bold text-[#1A2E1A] text-sm">Matriks Hak Akses</h2>

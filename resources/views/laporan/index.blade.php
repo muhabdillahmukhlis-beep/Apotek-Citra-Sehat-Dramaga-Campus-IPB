@@ -24,7 +24,7 @@
             {{-- Print Button --}}
             <button onclick="window.print()" 
                     class="px-6 py-2 bg-[#2E7D32] rounded-xl text-[11px] font-bold text-white shadow-lg hover:bg-[#1B5E20] transition-all uppercase tracking-wider">
-                <i class="fas fa-print mr-1"></i> Print
+                 <i class="fas fa-print mr-1"></i> Print
             </button>
         </div>
     </div>
@@ -42,7 +42,7 @@
         @foreach($tabs as $key => $label)
             <a href="{{ route('laporan.index', ['tab' => $key, 'start' => $startDate, 'end' => $endDate]) }}" 
                class="px-6 py-2 rounded-full text-xs font-bold transition-all {{ $tab == $key ? 'bg-[#2E7D32] text-white shadow-lg' : 'bg-white text-gray-400 border border-gray-100 hover:bg-gray-50' }}">
-                {{ $label }}
+                 {{ $label }}
             </a>
         @endforeach
     </div>
@@ -151,18 +151,21 @@
                                     #{{ $t->no_transaksi }}
                                 </span>
                             </td>
-                            <td class="p-6 font-bold text-gray-700 text-sm">{{ $t->kasir->name ?? 'Admin' }}</td>
+                            <td class="p-6 font-bold text-gray-700 text-sm">{{ $t->kasir->nama ?? 'Admin' }}</td>
                             <td class="p-6 font-black text-[#1A2E1A] text-right">Rp {{ number_format($t->total, 0, ',', '.') }}</td>
                             @if($tab == 'profit')
                             <td class="p-6 font-bold text-green-600 text-right">Rp {{ number_format($t->total * 0.2, 0, ',', '.') }}</td>
                             @endif
                             <td class="p-6 text-center no-print">
-                                <a href="{{ route('transaksi.show', $t->id) }}" class="text-[10px] font-black text-[#2E7D32]">DETAIL</a>
+                                {{-- 🌟 PERBAIKAN: Tag <a> diubah ke <button> ajax modal interaktif --}}
+                                <button type="button" onclick="bukaModalAnalitik({{ $t->id }})" class="text-[10px] font-black text-[#2E7D32] hover:text-[#1B5E20] transition-colors outline-none focus:outline-none">
+                                    DETAIL
+                                </button>
                             </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="6" class="p-10 text-center text-gray-400 uppercase text-[10px] font-bold">Tidak ada data</td>
+                            <td colspan="{{ $tab == 'profit' ? 6 : 5 }}" class="p-10 text-center text-gray-400 uppercase text-[10px] font-bold">Tidak ada data</td>
                         </tr>
                         @endforelse
                     </tbody>
@@ -197,10 +200,156 @@
     </div>
 </div>
 
+{{-- 🌟 STRUKTUR MODAL BARU (Dipasang rapi di luar container agar z-index tidak terinterupsi layout lain) --}}
+<div id="modalDetailAnalitik" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 transition-all no-print">
+    <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] shadow-2xl overflow-hidden flex flex-col scale-95 transition-transform duration-300" id="boxContainerAnalitik">
+        <div class="p-6 border-b flex justify-between items-center bg-white">
+            <div>
+                <h3 class="text-xl font-bold text-gray-800">Detail Invoice Item</h3>
+                <p class="text-xs text-gray-400" id="lblNoTransaksi">No. Nota: -</p>
+            </div>
+            <button type="button" onclick="tutupModalAnalitik()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div id="bodyContentAnalitik" class="p-6 overflow-y-auto bg-gray-50/50">
+            {{-- Disuntikkan otomatis via JavaScript --}}
+        </div>
+        <div class="p-4 border-t bg-white flex justify-end">
+            <button type="button" onclick="tutupModalAnalitik()" class="bg-gray-100 text-gray-700 px-6 py-2 rounded-xl text-xs font-bold hover:bg-gray-200 transition">
+                Tutup
+            </button>
+        </div>
+    </div>
+</div>
+
+{{-- JAVASCRIPT AJAX HANDLER --}}
+<script>
+// Format Rupiah Helper
+const formatUangAnalitik = (num) => new Intl.NumberFormat('id-ID', { 
+    style: 'currency', 
+    currency: 'IDR', 
+    minimumFractionDigits: 0 
+}).format(num);
+
+async function bukaModalAnalitik(id) {
+    const modal = document.getElementById('modalDetailAnalitik');
+    const container = document.getElementById('boxContainerAnalitik');
+    const content = document.getElementById('bodyContentAnalitik');
+    
+    // Aktivasi trigger transisi CSS & Loading spinner
+    modal.classList.remove('hidden');
+    setTimeout(() => container.classList.remove('scale-95'), 10);
+    content.innerHTML = '<div class="flex justify-center py-20"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2E7D32]"></div></div>';
+
+    try {
+        // Fetch data JSON dari sistem internal
+        const response = await fetch(`/transaksi/${id}`);
+        const res = await response.json();
+
+        if (res.status === 'success') {
+            const trx = res.data;
+            document.getElementById('lblNoTransaksi').innerText = `No. Nota: ${trx.no_transaksi}`;
+
+            // Bangun list obat/produk di dalam transaksi
+            let itemRows = trx.details.map(item => `
+                <tr class="border-b border-gray-100 text-xs">
+                    <td class="py-3 font-medium text-gray-800">
+                        <p class="font-bold">${item.nama_obat}</p>
+                        <p class="text-[9px] text-gray-400 font-mono">${item.kode_obat} (${item.satuan})</p>
+                    </td>
+                    <td class="py-3 text-center text-gray-600 font-bold">${item.jumlah}</td>
+                    <td class="py-3 text-right text-gray-600">${formatUangAnalitik(item.harga_satuan)}</td>
+                    <td class="py-3 text-right font-black text-gray-800">${formatUangAnalitik(item.subtotal)}</td>
+                </tr>
+            `).join('');
+
+            // Modifikasi Struktur Visual HTML
+            content.innerHTML = `
+                <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm mb-6 grid grid-cols-2 gap-y-3">
+                    <div>
+                        <p class="text-[9px] text-gray-400 uppercase font-black tracking-wider">Tanggal & Waktu</p>
+                        <p class="text-xs font-bold text-gray-700">${new Date(trx.created_at).toLocaleString('id-ID')}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[9px] text-gray-400 uppercase font-black tracking-wider">Metode Pembayaran</p>
+                        <p class="text-xs font-black text-green-600">${trx.metode_bayar}</p> 
+                    </div>
+                    <div>
+                        <p class="text-[9px] text-gray-400 uppercase font-black tracking-wider">Kasir Pelaksana</p>
+                        <p class="text-xs font-bold text-gray-700">${trx.kasir ? trx.kasir.nama : 'Administrator'}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[9px] text-gray-400 uppercase font-black tracking-wider">Status Pembayaran</p>
+                        <span class="text-[9px] px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-bold uppercase">${trx.status}</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-4 overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="text-[9px] text-gray-400 uppercase font-black border-b pb-2">
+                                <th class="pb-2">Deskripsi Item</th>
+                                <th class="pb-2 text-center">Qty</th>
+                                <th class="pb-2 text-right">Harga</th>
+                                <th class="pb-2 text-right">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>${itemRows}</tbody>
+                    </table>
+                </div>
+
+                <div class="bg-[#F4F9F4] p-4 rounded-xl border border-[#E1F0E1] space-y-1.5">
+                    <div class="flex justify-between text-xs text-gray-600 font-medium">
+                        <span>Subtotal Tagihan</span>
+                        <span>${formatUangAnalitik(trx.subtotal)}</span>
+                    </div>
+                    <div class="flex justify-between text-xs text-gray-600 font-medium border-b border-[#D2E7D2] pb-1.5">
+                        <span>Uang Diterima Dari Pembeli</span>
+                        <span>${formatUangAnalitik(trx.uang_diterima)}</span>
+                    </div>
+                    <div class="flex justify-between text-xs text-gray-600 font-medium">
+                        <span>Uang Kembalian</span>
+                        <span>${formatUangAnalitik(trx.kembalian)}</span>
+                    </div>
+                    <div class="flex justify-between text-sm font-black pt-2 text-[#1A2E1A]">
+                        <span>TOTAL REVENUE (OMZET)</span>
+                        <span class="text-base text-[#2E7D32]">${formatUangAnalitik(trx.total)}</span>
+                    </div>
+                </div>
+            `;
+        } else {
+            throw new Error(res.message || 'Gagal memproses parsing data.');
+        }
+    } catch (e) {
+        console.error(e);
+        content.innerHTML = `
+            <div class="text-center py-12">
+                <i class="fas fa-exclamation-circle text-red-500 text-2xl mb-2"></i>
+                <p class="text-red-500 font-bold text-xs">Gagal Memuat Detail Invoice</p>
+                <p class="text-[10px] text-gray-400">${e.message}</p>
+            </div>`;
+    }
+}
+
+function tutupModalAnalitik() {
+    const modal = document.getElementById('modalDetailAnalitik');
+    const container = document.getElementById('boxContainerAnalitik');
+    container.classList.add('scale-95');
+    setTimeout(() => modal.classList.add('hidden'), 100);
+}
+
+// Event handler klik area luar modal untuk menutup
+window.addEventListener('click', function(e) {
+    const modal = document.getElementById('modalDetailAnalitik');
+    if (e.target === modal) tutupModalAnalitik();
+});
+</script>
+
 <style>
     @media print {
         /* Sembunyikan semua elemen navigasi dan tombol */
-        .no-print, nav, aside, footer, button, form, .nav-tabs {
+        .no-print, nav, aside, footer, button, form, .nav-tabs, #modalDetailAnalitik {
             display: none !important;
         }
 

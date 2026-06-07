@@ -3,87 +3,42 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Models\Notifikasi; // Impor model Notifikasi agar dapat digunakan
+use App\Models\Notifikasi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class UserController extends Controller
 {
+    /**
+     * Helper privat untuk mendeteksi kolom nama pengguna secara defensif.
+     */
+    private function getUserNameField(): string
+    {
+        return Schema::hasColumn('users', 'nama') ? 'nama' : 'name';
+    }
+
     /**
      * Menampilkan halaman Manajemen Pengguna dan Matriks Hak Akses.
      */
     public function index(Request $request)
     {
-        // 1. Mengambil seluruh data pengguna dari database berdasarkan nama (A-Z)
-        // Menggunakan order-by defensif mengantisipasi kolom 'nama' atau 'name'
-        $orderByField = \Schema::hasColumn('users', 'nama') ? 'nama' : 'name';
-        $users = User::orderBy($orderByField, 'asc')->get();
+        // 1. Mengambil seluruh data pengguna diurutkan secara A-Z berdasarkan kolom yang tersedia
+        $nameField = $this->getUserNameField();
+        $users = User::orderBy($nameField, 'asc')->get();
 
-        // 2. Definisi statis matriks hak akses sesuai dengan blueprint desain UI Apotek Citra Sehat
+        // 2. 🌟 PERBAIKAN MATRIKS: Mengubah hak akses Pemilik menjadi 'true' pada semua lini fitur strategis
         $matriksHakAkses = [
-            [
-                'fitur'    => 'Dashboard',
-                'admin'    => true,
-                'kasir'    => true,
-                'apoteker' => true,
-                'pemilik'  => true
-            ],
-            [
-                'fitur'    => 'Data Obat (CRUD)',
-                'admin'    => true,
-                'kasir'    => false,
-                'apoteker' => true,
-                'pemilik'  => false
-            ],
-            [
-                'fitur'    => 'Transaksi Penjualan',
-                'admin'    => true,
-                'kasir'    => true,
-                'apoteker' => false,
-                'pemilik'  => false
-            ],
-            [
-                'fitur'    => 'Riwayat Transaksi',
-                'admin'    => true,
-                'kasir'    => true,
-                'apoteker' => false,
-                'pemilik'  => true
-            ],
-            [
-                'fitur'    => 'Manajemen Stok',
-                'admin'    => true,
-                'kasir'    => false,
-                'apoteker' => true,
-                'pemilik'  => false
-            ],
-            [
-                'fitur'    => 'Monitoring Kadaluarsa',
-                'admin'    => true,
-                'kasir'    => false,
-                'apoteker' => true,
-                'pemilik'  => false
-            ],
-            [
-                'fitur'    => 'Laporan & Analitik',
-                'admin'    => true,
-                'kasir'    => false,
-                'apoteker' => false,
-                'pemilik'  => true
-            ],
-            [
-                'fitur'    => 'Manajemen Pengguna',
-                'admin'    => true,
-                'kasir'    => false,
-                'apoteker' => false,
-                'pemilik'  => false
-            ],
-            [
-                'fitur'    => 'Pengaturan Sistem',
-                'admin'    => true,
-                'kasir'    => false,
-                'apoteker' => false,
-                'pemilik'  => true
-            ],
+            ['fitur' => 'Dashboard', 'admin' => true, 'kasir' => true, 'apoteker' => true, 'pemilik' => true],
+            ['fitur' => 'Data Obat (CRUD)', 'admin' => true, 'kasir' => false, 'apoteker' => true, 'pemilik' => true],
+            ['fitur' => 'Transaksi Penjualan', 'admin' => true, 'kasir' => true, 'apoteker' => false, 'pemilik' => true],
+            ['fitur' => 'Riwayat Transaksi', 'admin' => true, 'kasir' => true, 'apoteker' => false, 'pemilik' => true],
+            ['fitur' => 'Manajemen Stok', 'admin' => true, 'kasir' => false, 'apoteker' => true, 'pemilik' => true],
+            ['fitur' => 'Monitoring Kadaluarsa', 'admin' => true, 'kasir' => false, 'apoteker' => true, 'pemilik' => true],
+            ['fitur' => 'Laporan & Analitik', 'admin' => true, 'kasir' => false, 'apoteker' => false, 'pemilik' => true],
+            ['fitur' => 'Manajemen Pengguna', 'admin' => true, 'kasir' => false, 'apoteker' => false, 'pemilik' => true],
+            ['fitur' => 'Pengaturan Sistem', 'admin' => true, 'kasir' => false, 'apoteker' => false, 'pemilik' => true],
         ];
 
         // 3. Mengirimkan data pengguna dan struktur matriks ke view blade
@@ -98,6 +53,11 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
+        // Perbaikan: Ubah username ke lowercase SEBELUM validasi untuk mencegah bypass case-sensitive
+        if ($request->has('username')) {
+            $request->merge(['username' => strtolower($request->username)]);
+        }
+
         // 1. Validasi Input Form
         $request->validate([
             'nama'       => 'required|string|max:255',
@@ -107,41 +67,37 @@ class UserController extends Controller
             'role'       => 'required|in:admin,kasir,apoteker,pemilik',
             'no_telepon' => 'nullable|string|max:15',
         ], [
-            // Pesan error kustom bahasa Indonesia jika validasi gagal
             'username.unique' => 'Username ini sudah digunakan oleh staf lain.',
             'email.unique'    => 'Alamat email ini sudah terdaftar.',
             'password.min'    => 'Password minimal harus 6 karakter.',
         ]);
 
-        // 2. Simpan Data ke Database (Dengan penanganan fallback kolom nama/name)
-        $namaInput = $request->nama;
+        // 2. Simpan Data ke Database dengan penanganan kolom dinamis (nama/name)
+        $nameField = $this->getUserNameField();
+        
         $userData = [
-            'username'   => strtolower($request->username),
+            'username'   => $request->username,
             'email'      => $request->email,
             'password'   => Hash::make($request->password), 
             'role'       => $request->role,
             'no_telepon' => $request->no_telepon,
             'is_aktif'   => true, 
+            $nameField   => $request->nama,
         ];
 
-        if (\Schema::hasColumn('users', 'nama')) {
-            $userData['nama'] = $namaInput;
-        } else {
-            $userData['name'] = $namaInput;
-        }
-
         $user = User::create($userData);
-        $displayNama = $user->nama ?? $user->name ?? $user->username;
+        $displayNama = $user->{$nameField} ?? $user->username;
 
-        // 🔥 AUTOMATIC TRIGGER: Kirim Notifikasi Registrasi Akun Baru ke Sistem
+        // 🌟 PERBAIKAN NOTIFIKASI: Mendeteksi siapa yang sedang mengeksekusi aksi (Admin / Pemilik)
+        $actorRole = ucfirst(auth()->user()->role ?? 'Admin');
+
         Notifikasi::create([
-            'kategori'  => 'sistem',
+            'jenis'     => 'sistem',
             'judul'     => 'Akun baru berhasil didaftarkan',
-            'pesan'     => 'Pengguna baru dengan nama "' . $displayNama . '" (' . ucfirst($user->role) . ') telah ditambahkan ke dalam sistem oleh Admin.',
+            'pesan'     => 'Pengguna baru dengan nama "' . $displayNama . '" (' . ucfirst($user->role) . ') telah ditambahkan ke dalam sistem oleh ' . $actorRole . '.',
             'is_dibaca' => false
         ]);
 
-        // 3. Kembalikan ke halaman index dengan Pesan Sukses Alert
         return redirect()->route('user.index')->with('success', 'Pengguna baru berhasil ditambahkan!');
     }
 
@@ -152,27 +108,30 @@ class UserController extends Controller
     {
         $user = User::findOrFail($id);
         
-        // 🛡️ SECURITY FIX 1: Mencegah Admin menonaktifkan akunnya sendiri
-        if (auth()->id() == $user->id) {
+        // 🛡️ SECURITY FIX 1: Mencegah Pengguna menonaktifkan akunnya sendiri
+        if (auth()->id() === $user->id) {
             return redirect()->route('user.index')->withErrors('Anda tidak dapat menonaktifkan akun Anda sendiri!');
         }
 
-        // 🛡️ SECURITY FIX 2: Mencegah Admin menonaktifkan akun Pemilik (Owner) Apotek
-        if ($user->role === 'pemilik') {
-            return redirect()->route('user.index')->withErrors('Akses akun Pemilik utama tidak boleh dinonaktifkan demi keamanan sistem!');
+        // 🛡️ SECURITY FIX 2: Mencegah Admin/siapa pun menonaktifkan akun Pemilik utama dari tabel
+        if ($user->role === 'pemilik' && auth()->user()->role !== 'pemilik') {
+            return redirect()->route('user.index')->withErrors('Akses akun Pemilik utama dilindungi dan tidak boleh dinonaktifkan oleh staf lain!');
         }
 
         // Membalikkan nilai boolean status
         $user->update(['is_aktif' => !$user->is_aktif]);
 
         $statusTeks = $user->is_aktif ? 'diaktifkan kembali' : 'dinonaktifkan';
-        $displayNama = $user->nama ?? $user->name ?? $user->username;
+        $nameField = $this->getUserNameField();
+        $displayNama = $user->{$nameField} ?? $user->username;
 
-        // 🔥 AUTOMATIC TRIGGER: Kirim Notifikasi Perubahan Status Keaktifan Akun
+        // 🌟 PERBAIKAN NOTIFIKASI: Dinamis sesuai aktor pem pem pembuat keputusan
+        $actorRole = ucfirst(auth()->user()->role ?? 'Admin');
+
         Notifikasi::create([
-            'kategori'  => 'sistem',
+            'jenis'     => 'sistem',
             'judul'     => 'Status akses pengguna berubah',
-            'pesan'     => 'Akses masuk untuk akun "' . $displayNama . '" (' . ucfirst($user->role) . ') telah ' . $statusTeks . ' oleh Admin.',
+            'pesan'     => 'Akses masuk untuk akun "' . $displayNama . '" (' . ucfirst($user->role) . ') telah ' . $statusTeks . ' oleh ' . $actorRole . '.',
             'is_dibaca' => false
         ]);
 
@@ -180,33 +139,42 @@ class UserController extends Controller
     }
 
     /**
-     * Menghapus pengguna secara permanen dari database.
+     * Menghapus pengguna secara permanen dari database dengan aman.
      */
     public function destroy($id)
     {
         $user = User::findOrFail($id);
 
-        // 🛡️ SECURITY FIX 1: Mencegah Admin menghapus akunnya sendiri
-        if (auth()->id() == $user->id) {
+        // 🛡️ SECURITY FIX 1: Mencegah pengguna menghapus akunnya sendiri
+        if (auth()->id() === $user->id) {
             return redirect()->route('user.index')->withErrors('Anda tidak dapat menghapus akun Anda sendiri!');
         }
 
-        // 🛡️ SECURITY FIX 2: Mencegah Admin menghapus akun Pemilik (Owner) Apotek
+        // 🛡️ SECURITY FIX 2: Mencegah siapa pun menghapus akun Pemilik (Owner) Apotek
         if ($user->role === 'pemilik') {
             return redirect()->route('user.index')->withErrors('Akun Pemilik utama dilindungi dan tidak dapat dihapus dari sistem!');
         }
 
-        // Simpan nama dan role sebelum objek dihapus untuk keperluan pesan teks notifikasi
-        $namaTerhapus = $user->nama ?? $user->name ?? $user->username;
+        // Simpan info nama sebelum dihapus
+        $nameField = $this->getUserNameField();
+        $namaTerhapus = $user->{$nameField} ?? $user->username;
         $roleTerhapus = ucfirst($user->role);
 
-        $user->delete();
+        // 🛡️ DATA INTEGRITY SAFEGUARD: Jalankan Database Transaction
+        DB::transaction(function () use ($user) {
+            if (Schema::hasTable('notifikasi') && Schema::hasColumn('notifikasi', 'user_id')) {
+                Notifikasi::where('user_id', $user->id)->update(['user_id' => null]);
+            }
+            $user->delete();
+        });
 
-        // 🔥 AUTOMATIC TRIGGER: Kirim Notifikasi Penghapusan Akun Permanen
+        // 🌟 PERBAIKAN NOTIFIKASI: Teks dinamis pelacak aksi
+        $actorRole = ucfirst(auth()->user()->role ?? 'Admin');
+
         Notifikasi::create([
-            'kategori'  => 'sistem',
+            'jenis'     => 'sistem',
             'judul'     => 'Akun pengguna dihapus permanen',
-            'pesan'     => 'Data staf bernama "' . $namaTerhapus . '" (' . $roleTerhapus . ') telah dihapus secara permanen dari basis data sistem.',
+            'pesan'     => 'Data staf bernama "' . $namaTerhapus . '" (' . $roleTerhapus . ') telah dihapus secara permanen dari basis data sistem oleh ' . $actorRole . '.',
             'is_dibaca' => false
         ]);
 
