@@ -15,25 +15,24 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
 
-# 2. Perbaikan Error Konflik MPM Apache
-RUN a2dismod mpm_event || true
-RUN a2enmod mpm_prefork || true
-
-# 3. Enable Apache rewrite module untuk routing Laravel (.htaccess)
+# 2. Aktifkan modul rewrite Apache untuk Laravel routing (.htaccess)
 RUN a2enmod rewrite
 
-# 4. Setup working directory
+# 3. Tentukan folder kerja utama
 WORKDIR /var/www/html
 COPY . .
 
-# 5. Ganti konfigurasi default Apache dengan file config kita
+# 4. Salin file virtualhost kita untuk mengarahkan root ke folder public
 COPY 000-default.conf /etc/apache2/sites-available/000-default.conf
 
-# 6. Install Composer & dependencies
+# 5. Pasang Composer & package dependensi Laravel
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 RUN composer install --no-dev --optimize-autoloader
 
-# 7. Set proper permissions untuk storage Laravel
+# 6. Atur izin akses folder storage & bootstrap cache agar tidak error permission
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
 EXPOSE 80
+
+# 7. Jalankan Apache di foreground secara aman menggunakan path biner bawaan
+CMD ["apache2-foreground"]
