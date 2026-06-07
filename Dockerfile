@@ -45,5 +45,5 @@ RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cac
 
 EXPOSE 80
 
-# 6. Start both PHP-FPM and Nginx together
-CMD php-fpm -D && nginx -g "daemon off;"
+# 6. Start PHP-FPM in background and Nginx in foreground smoothly
+CMD service nginx start && php-fpm
