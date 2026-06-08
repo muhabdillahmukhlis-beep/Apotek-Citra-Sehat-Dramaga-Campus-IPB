@@ -1,6 +1,6 @@
-﻿FROM php:8.2-apache
+﻿FROM php:8.2-cli
 
-# 1. Install dependensi sistem & ekstensi PHP yang dibutuhkan Laravel
+# 1. Install dependensi sistem & ekstensi PHP untuk Laravel
 RUN apt-get update && apt-get install -y \
     libpng-dev \
     libjpeg-dev \
@@ -12,28 +12,19 @@ RUN apt-get update && apt-get install -y \
     unzip \
     git \
     curl \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
 
-# 2. Matikan paksa modul mpm_event yang bikin bentrok
-RUN a2dismod mpm_event || true
-RUN a2enmod mpm_prefork || true
-
-# 3. Aktifkan modul rewrite Apache untuk routing Laravel (.htaccess)
-RUN a2enmod rewrite
-
-# 4. Set direktori kerja utama di dalam container
+# 2. Setup working directory
 WORKDIR /var/www/html
 COPY . .
 
-# 5. Salin file konfigurasi virtualhost kita
-COPY 000-default.conf /etc/apache2/sites-available/000-default.conf
-
-# 6. Pasang Composer & package dependensi Laravel secara optimal
+# 3. Install Composer & dependencies
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 RUN composer install --no-dev --optimize-autoloader
 
-# 7. Set izin akses folder storage & bootstrap agar tidak error permission
+# 4. Set proper permissions
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
+# 5. Jalankan internal web server Laravel langsung mengarah ke port Railway
 EXPOSE 80
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=80"]
