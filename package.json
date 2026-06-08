@@ -3,7 +3,7 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "build": "vite build",
+        "build": "mkdir -p database && touch database/database.sqlite && chmod -R 777 database storage && php artisan migrate --force && vite build",
         "dev": "vite"
     },
     "devDependencies": {
