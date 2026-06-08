@@ -18,9 +18,18 @@ class LaporanExport implements FromCollection, WithHeadings, WithMapping
 
     public function collection()
     {
-        // CARA AMAN: Membaca parameter dari Object Request dengan nilai default sebulan penuh jika kosong
-        $startDate = $this->request->input('start') ?? now()->startOfMonth()->toDateString();
-        $endDate = $this->request->input('end') ?? now()->endOfMonth()->toDateString();
+        // Solusi Mutakhir: Mendukung format Array maupun Object, dengan fallback sebulan penuh jika kosong
+        $startDate = is_array($this->request) 
+            ? ($this->request['start'] ?? null) 
+            : ($this->request->input('start') ?? null);
+
+        $endDate = is_array($this->request) 
+            ? ($this->request['end'] ?? null) 
+            : ($this->request->input('end') ?? null);
+
+        // Jika form kosong, set otomatis ke awal dan akhir bulan ini
+        $startDate = $startDate ?? now()->startOfMonth()->toDateString();
+        $endDate = $endDate ?? now()->endOfMonth()->toDateString();
 
         $start = \Carbon\Carbon::parse($startDate)->startOfDay();
         $end = \Carbon\Carbon::parse($endDate)->endOfDay();
@@ -41,7 +50,6 @@ class LaporanExport implements FromCollection, WithHeadings, WithMapping
         return [
             $transaksi->created_at->format('d/m/Y H:i'),
             '#' . $transaksi->no_transaksi,
-            // Mengubah nama kolom penampung nama kasir dari 'name' menjadi 'nama' menyesuaikan database lokal Anda
             $transaksi->kasir->nama ?? 'Admin',
             $transaksi->total,
         ];
