@@ -33,8 +33,7 @@ return [
         'sqlite' => [
             'driver' => 'sqlite',
             'url' => env('DB_URL'),
-            'database' => '/var/www/html/database/database.sqlite', // <-- Terkunci ke absolute path server Linux
-            'prefix' => '',
+            'database' => '/var/www/html/projek-rpl/database/database.sqlite',            'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
             'busy_timeout' => null,
             'journal_mode' => null,
