@@ -17,7 +17,9 @@ return [
     |
     */
 
-    'default' => 'sqlite',    /*
+    'default' => 'sqlite',
+
+    /*
     |--------------------------------------------------------------------------
     | Database Connections
     |--------------------------------------------------------------------------
@@ -33,7 +35,8 @@ return [
         'sqlite' => [
             'driver' => 'sqlite',
             'url' => env('DB_URL'),
-            'database' => '/var/www/html/projek-rpl/database/database.sqlite',            'prefix' => '',
+            'database' => database_path('database.sqlite'), // <-- DIGANTI JADI INI (Otomatis pintar menyesuaikan tempat!)
+            'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
             'busy_timeout' => null,
             'journal_mode' => null,
@@ -107,8 +110,6 @@ return [
             'charset' => env('DB_CHARSET', 'utf8'),
             'prefix' => '',
             'prefix_indexes' => true,
-            // 'encrypt' => env('DB_ENCRYPT', 'yes'),
-            // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
         ],
 
     ],
